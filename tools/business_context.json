@@ -1,0 +1,91 @@
+{
+  "company": {
+    "brand_mission": "Teaching essential life skills to children, teens, and adults — confidence, resilience, growth mindset, emotional intelligence, and adaptability",
+    "audience_primary": "Parents, educators, therapists, and schools",
+    "stage": "Scaling ($8M revenue last year, targeting $11M at 15% profitability)",
+    "team_size": "3-5 marketing team (small)",
+    "market_landscape": "Fragmented — lots of small players, no dominant competitor"
+  },
+  "products": {
+    "physical": {
+      "description": "Journals (kids, teens, adults), Conversation Cards, Affirmation Cards, Card Game, Board Game (launching soon)",
+      "aov_usd": "25-50",
+      "revenue_share": "80%",
+      "repeat_purchase": "Mostly one-time buyers",
+      "channels": ["Meta/TikTok Ads (primary)", "Amazon (meaningful)", "DTC website"]
+    },
+    "digital": {
+      "description": "Downloadable guides and PDFs",
+      "revenue_share": "12%",
+      "margin": "Highest margin product type"
+    },
+    "subscription": {
+      "description": "Membership for parents, educators, therapists, and schools. Includes gated resources, masterclasses, guides, certified parenting coach (DM + live 1:1 calls)",
+      "revenue_share": "8%",
+      "active_subscribers_estimate": "500-1500",
+      "pricing": {
+        "parents_quarterly": "$75/quarter",
+        "parents_annual": "$240/year",
+        "individual_professionals": "$297/year",
+        "teams_schools_groups": "Custom — requires sales call"
+      },
+      "trial": "7-day free trial",
+      "onboarding": "Email sequence over first few weeks",
+      "churn_profile": {
+        "parents": "High churn — cite 'price' or 'not for me right now'",
+        "professionals": "Low churn — much more retained"
+      },
+      "retention_tactics_active": ["Win-back emails on cancel", "Exclusive perks for long-term members"],
+      "missing_retention_tactics": ["Pause option (not offered)", "Referral/affiliate program (none exists)"],
+      "platform": "Custom-built (has developer costs that compress subscription margins)"
+    }
+  },
+  "metrics": {
+    "revenue_last_year": "$8M",
+    "revenue_goal": "$11M",
+    "current_profitability": "11%",
+    "profitability_goal": "15%",
+    "ltv_usd": 49.65,
+    "cac_usd": 31.79,
+    "ltv_cac_ratio": 1.56,
+    "healthy_ltv_cac_benchmark": 3.0,
+    "ltv_cac_gap": "1.56x vs 3.0x benchmark — critically below. Makes profitable paid acquisition scaling impossible.",
+    "amazon_daily_revenue": "~$3k/day on normal days",
+    "seasonality": "Q4 holiday gifting is the primary peak"
+  },
+  "owned_audience": {
+    "email_list": "600,000 subscribers",
+    "email_open_rate": "50%+ (exceptional)",
+    "social_following": "2M total (Instagram dominant)",
+    "social_strategy": "Organic content drives lead magnet downloads to grow email list",
+    "note": "Massive underutilized asset — only 500-1500 active subscribers despite 600k engaged emails"
+  },
+  "acquisition": {
+    "primary_channel": "Paid social (Meta / TikTok)",
+    "concentration_risk": "High — single channel dependency",
+    "parent_funnel": "Meta Ad → physical or digital product purchase → subscription upsell via email (over following weeks)",
+    "professional_funnel": "Sales rep cold outreach (LinkedIn/email) → subscription",
+    "amazon_halo": "Amazon performance correlates with Meta performance — they rise and fall together, creating compounding risk",
+    "what_hasnt_worked": ["Influencer marketing", "PostPilot direct mail postcards"]
+  },
+  "strategic_challenges": [
+    "LTV:CAC of 1.56x — can't profitably scale paid acquisition as-is",
+    "Parent subscription churn is high — members not staying long enough",
+    "600k email list with 50% open rate is massively underconverted to subscription",
+    "Physical products are mostly one-time buyers — no repeat purchase loop",
+    "Revenue is 80% physical (lower margin) — needs to shift toward subscription/digital",
+    "Paid social + Amazon performance are correlated — double channel concentration risk",
+    "Custom platform developer costs compress subscription margins",
+    "No referral program despite a community-oriented product in a word-of-mouth niche"
+  ],
+  "strategic_opportunities": [
+    "Email list monetization: 600k at 50% open rate = 300k reading every email. Even 1% subscription conversion = 6k new subscribers at zero incremental CAC",
+    "Fix parent onboarding: 7-day trial too short; 1:1 coaching access is massively undermarketted and likely underused — people who use the coach will stay",
+    "Professional expansion: low churn + organizations have budget + group pricing could be 10x current deal size",
+    "Referral program: word-of-mouth is natural in parenting/educator communities; currently untapped",
+    "Physical → subscription bridge: Q4 holiday buyers could be converted via post-purchase flows",
+    "Raise subscription pricing or restructure tiers: $75/quarter for 1:1 coaching is underpriced",
+    "B2B institutional sales: school districts, therapy practices, pediatric offices — much larger deals than individual subscribers",
+    "Reduce platform costs: evaluate if custom-built platform vs. Kajabi/Circle/Skool would reduce developer overhead"
+  ]
+}

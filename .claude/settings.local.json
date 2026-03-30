@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python tools/strategic_advisor.py --question \"How can we improve subscription acquisition? Currently we launch a masterclass, promote it to our email database, and use a 5-day guided email sequence during the 7-day trial to convert — but we''re still churning and only promoting to our existing email list.\")",
+      "Bash(python3 tools/strategic_advisor.py --question \"How do we make Amazon its own money printing engine instead of it just being a halo effect from Meta? Currently Amazon sales go up when Meta is up and down when Meta is down — they''re correlated. We want Amazon to drive its own demand independently.\")",
+      "Bash(python3 tools/strategic_advisor.py --question \"Beyond fixing Amazon independence and subscription acquisition, what are the highest-leverage moves to break through to the next revenue level and push the brand forward? We are at $8M targeting $11M at 15% profitability. LTV:CAC is 1.56x. We have 600k email subscribers at 50%+ open rates, 2M social followers, and only 500-1500 active subscribers. Parents churn, professionals don''t. We sell physical products \\(journals, cards\\) and a subscription. What are the biggest untapped levers?\")",
+      "Bash(python3 tools/pull_data.py)",
+      "Bash(python3 -c \":*)",
+      "Bash(python3 tools/append_sales.py --dry-run)",
+      "Bash(python3 tools/append_sales.py)",
+      "Bash(python3 tools/run_demand_plan.py)",
+      "Bash(python3 tools/year_ahead_plan.py --dry-run)",
+      "Bash(python3 tools/year_ahead_plan.py)",
+      "Bash(curl -s http://localhost:5001/api/annual-plan)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(''total:'', d[''total'']\\); print\\(''print_runs:'', len\\(d[''print_runs'']\\)\\); print\\(''distribution:'', len\\(d[''distribution'']\\)\\); print\\(''counts:'', d[''counts'']\\)\")",
+      "Bash(pkill -f \"dashboard/app.py\")"
+    ]
+  }
+}

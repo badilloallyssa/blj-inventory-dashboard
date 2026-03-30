@@ -1,0 +1,21 @@
+# Secrets
+.env
+credentials.json
+token.json
+service_account.json
+
+# Temporary processing files
+.tmp/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# macOS
+.DS_Store

@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Inventory Dashboard — Big Life Journal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f4f1;--card:#fff;--border:#e5e0d8;--text:#1a1a1a;--muted:#6b6560;
+  --cr:#dc2626;--cr-bg:#fef2f2;--cr-b:#fecaca;
+  --lw:#d97706;--lw-bg:#fffbeb;--lw-b:#fde68a;
+  --ok:#16a34a;--ok-bg:#f0fdf4;--ok-b:#bbf7d0;
+  --ov:#7c3aed;--ov-bg:#faf5ff;--ov-b:#ddd6fe;
+  --blue:#2563eb;--blue-dk:#1d4ed8;
+  --r:10px;--sh:0 1px 3px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── Header ── */
+.hdr{background:var(--card);border-bottom:1px solid var(--border);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.hdr-left{display:flex;align-items:center;gap:16px}
+.hdr h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.hdr-meta{font-size:11px;color:var(--muted);display:flex;gap:12px}
+.hdr-meta span{display:flex;align-items:center;gap:4px}
+.dot-live{width:6px;height:6px;border-radius:50%;background:#16a34a;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.btn{background:var(--blue);color:#fff;border:none;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;transition:background .15s}
+.btn:hover{background:var(--blue-dk)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer}
+.btn-ghost:hover{background:#f5f5f5}
+
+/* ── Nav tabs ── */
+.nav{background:var(--card);border-bottom:1px solid var(--border);padding:0 28px;display:flex;gap:4px;overflow-x:auto}
+.nav button{background:none;border:none;border-bottom:2px solid transparent;padding:12px 14px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .15s}
+.nav button.active{color:var(--blue);border-bottom-color:var(--blue)}
+.nav button:hover:not(.active){color:var(--text)}
+
+/* ── Filter bar ── */
+.filters{background:var(--card);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.filter-group{display:flex;align-items:center;gap:6px}
+.filter-group label{font-size:12px;color:var(--muted);font-weight:500}
+select,input[type=date]{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;background:#fff;color:var(--text);cursor:pointer}
+select:focus,input:focus{outline:none;border-color:var(--blue)}
+.filter-sep{width:1px;height:20px;background:var(--border)}
+
+/* ── Layout ── */
+.main{max-width:1380px;margin:0 auto;padding:22px 28px}
+.page{display:none}.page.active{display:block}
+.grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.mb{margin-bottom:16px}
+
+/* ── Summary cards ── */
+.scard{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:16px 18px;box-shadow:var(--sh)}
+.scard .lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px}
+.scard .val{font-size:28px;font-weight:700;line-height:1}
+.scard .sub{font-size:11px;color:var(--muted);margin-top:3px}
+.v-cr .val{color:var(--cr)}.v-lw .val{color:var(--lw)}.v-ok .val{color:var(--ok)}.v-ov .val{color:var(--ov)}.v-tr .val{color:var(--blue)}
+
+/* ── Cards ── */
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--sh);overflow:hidden}
+.card-hdr{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-hdr h2{font-size:13px;font-weight:600}
+.card-hdr .cnt{font-size:11px;background:#f1f5f9;color:var(--muted);padding:2px 7px;border-radius:20px}
+.chart-wrap{padding:16px;height:220px}
+.chart-wrap-lg{padding:16px;height:280px}
+
+/* ── Action rows ── */
+.arow{padding:12px 18px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:8px 1fr auto;gap:10px;align-items:start}
+.arow:last-child{border-bottom:none}
+.adot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.cr-dot{background:var(--cr)}.lw-dot{background:var(--lw)}
+.asku{font-size:13px;font-weight:600}
+.adet{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+.adeadline{font-size:12px;font-weight:600;color:var(--cr);text-align:right}
+.adeadline-lw{color:var(--lw)}
+.aqty{font-size:11px;color:var(--muted);margin-top:2px;text-align:right}
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;margin-right:3px;text-transform:uppercase;letter-spacing:.3px}
+.b-tr{background:#dbeafe;color:#1d4ed8}.b-po{background:#fce7f3;color:#be185d}.b-aw{background:#d1fae5;color:#065f46}
+
+/* ── Math callout (Action Plan) ── */
+.math-box{background:#f8f7f4;border:1px solid var(--border);border-radius:7px;padding:10px 14px;margin-top:8px;font-size:11px;color:var(--muted);line-height:1.7;font-family:'SF Mono',Consolas,monospace;display:none}
+.math-toggle{font-size:11px;color:var(--blue);cursor:pointer;margin-top:4px;display:inline-block}
+.math-toggle:hover{text-decoration:underline}
+.math-row{display:flex;gap:8px}
+.math-row strong{color:var(--text)}
+
+/* ── PO table ── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:9px 14px;text-align:left;background:#fafaf9;border-bottom:1px solid var(--border)}
+.tbl td{font-size:13px;padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#fafaf9}
+.pill{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px}
+.p-sh{background:#dbeafe;color:#1e40af}.p-tr{background:#d1fae5;color:#065f46}
+.p-pr{background:#ede9fe;color:#5b21b6}.p-or{background:#fef3c7;color:#92400e}
+
+/* ── Health matrix ── */
+.mx-wrap{overflow-x:auto}
+.mt{width:100%;border-collapse:collapse;min-width:860px}
+.mt th{font-size:11px;font-weight:600;color:var(--muted);padding:9px 6px;text-align:center;background:#fafaf9;border-bottom:1px solid var(--border);white-space:nowrap}
+.mt th:first-child{text-align:left;padding-left:16px;min-width:190px}
+.mt td{padding:7px 5px;text-align:center;border-bottom:1px solid var(--border)}
+.mt td:first-child{text-align:left;padding-left:16px;font-size:13px;font-weight:500}
+.mt tr:last-child td{border-bottom:none}
+.mc{display:inline-block;padding:3px 7px;border-radius:5px;font-weight:500;font-size:12px;min-width:36px;text-align:center}
+.mc.cr{background:var(--cr-bg);color:var(--cr)}.mc.lw{background:var(--lw-bg);color:var(--lw)}
+.mc.ok{background:var(--ok-bg);color:var(--ok)}.mc.ov{background:var(--ov-bg);color:var(--ov)}
+.mc.nd{color:#d1d5db}
+.leg{display:flex;gap:14px;padding:10px 18px;border-top:1px solid var(--border);background:#fafaf9;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.ld{width:10px;height:10px;border-radius:3px}
+
+/* ── Supplier cards ── */
+.sup-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;padding:14px 18px}
+.sc{background:#fafaf9;border:1px solid var(--border);border-radius:8px;padding:12px}
+.sc-name{font-size:12px;font-weight:600;margin-bottom:7px}
+.sc-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:3px}
+.sc-row span:last-child{font-weight:600;color:var(--text)}
+
+/* ── Loading / empty ── */
+.empty{padding:30px 18px;text-align:center;color:var(--muted);font-size:13px}
+.loading{padding:40px;text-align:center;color:var(--muted);font-size:13px}
+.skeleton{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:6px;height:14px;margin:8px 0}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── Section divider ── */
+.section-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px}
+
+/* ── Year-ahead plan ── */
+.ya-row{padding:13px 18px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:90px 1fr auto;gap:12px;align-items:start}
+.ya-row:last-child{border-bottom:none}
+.ya-status{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.s-overdue{background:#fef2f2;color:var(--cr)}.s-urgent{background:#fff7ed;color:#ea580c}
+.s-plan{background:#fffbeb;color:var(--lw)}.s-upcoming{background:#f0fdf4;color:var(--ok)}
+.s-print{background:#ede9fe;color:#6d28d9}
+.ya-sku{font-size:13px;font-weight:600}
+.ya-det{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.6}
+.ya-deadline{font-size:12px;font-weight:600;text-align:right;white-space:nowrap}
+.ya-deadline.od{color:var(--cr)}.ya-deadline.ur{color:#ea580c}.ya-deadline.pl{color:var(--lw)}.ya-deadline.up{color:var(--ok)}
+.ya-qty{font-size:11px;color:var(--muted);text-align:right;margin-top:2px}
+.ya-note{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5;font-style:italic}
+.print-banner{background:#ede9fe;border:1px solid #c4b5fd;border-radius:9px;padding:14px 18px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start}
+.print-banner-ok{background:#f0fdf4;border-color:#bbf7d0}
+.print-icon{font-size:22px;line-height:1;flex-shrink:0}
+.print-body h3{font-size:14px;font-weight:700;margin-bottom:3px}
+.print-body p{font-size:12px;color:var(--muted);line-height:1.6}
+
+@media(max-width:900px){
+  .grid-5{grid-template-columns:repeat(3,1fr)}
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .main{padding:14px}
+  .hdr,.nav,.filters{padding-left:14px;padding-right:14px}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+  <div class="hdr-left">
+    <h1>Inventory Dashboard</h1>
+    <div class="hdr-meta">
+      <span><div class="dot-live"></div> Live</span>
+      <span id="hdr-updated">Loading...</span>
+      <span id="hdr-plan"></span>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn-ghost" onclick="refreshAll()">↺ Refresh</button>
+  </div>
+</div>
+
+<!-- Nav tabs -->
+<div class="nav">
+  <button class="active" onclick="switchTab('overview', this)">Overview</button>
+  <button onclick="switchTab('sales', this)">Sales & Trends</button>
+  <button onclick="switchTab('inventory', this)">Inventory</button>
+  <button onclick="switchTab('warehouses', this)">Warehouse Comparison</button>
+  <button onclick="switchTab('action-plan', this)">Action Plan</button>
+  <button onclick="switchTab('year-ahead', this)">Year-Ahead Plan</button>
+</div>
+
+<!-- Filter bar -->
+<div class="filters">
+  <div class="filter-group">
+    <label>From</label>
+    <input type="date" id="f-start" value="2024-01-01"/>
+  </div>
+  <div class="filter-group">
+    <label>To</label>
+    <input type="date" id="f-end"/>
+  </div>
+  <div class="filter-sep"></div>
+  <div class="filter-group">
+    <label>SKU</label>
+    <select id="f-sku"><option value="all">All SKUs</option></select>
+  </div>
+  <div class="filter-group">
+    <label>Warehouse</label>
+    <select id="f-wh"><option value="all">All Warehouses</option></select>
+  </div>
+  <button class="btn" onclick="applyFilters()">Apply</button>
+</div>
+
+<div class="main">
+
+<!-- ═══ OVERVIEW ═══════════════════════════════════════════════════ -->
+<div id="page-overview" class="page active">
+  <div class="grid-5" id="summary-cards"><div class="loading skeleton"></div></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-hdr"><h2>🔴 Urgent Actions</h2><span class="cnt" id="urg-cnt">—</span></div>
+      <div id="urgent-list"><div class="loading">Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h2>📦 Active POs &amp; Transfers</h2><span class="cnt" id="po-cnt">—</span></div>
+      <div id="po-table"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-hdr"><h2>Inventory Health Matrix</h2></div>
+    <div class="mx-wrap" id="health-matrix"><div class="loading">Loading...</div></div>
+    <div class="leg">
+      <div class="li"><div class="ld" style="background:var(--cr-bg);border:1px solid var(--cr)"></div>Critical &lt;30d</div>
+      <div class="li"><div class="ld" style="background:var(--lw-bg);border:1px solid var(--lw)"></div>Low 30–90d</div>
+      <div class="li"><div class="ld" style="background:var(--ok-bg);border:1px solid var(--ok)"></div>Healthy 90–365d</div>
+      <div class="li"><div class="ld" style="background:var(--ov-bg);border:1px solid var(--ov)"></div>Overstock &gt;365d</div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-hdr"><h2>Supplier Stock</h2></div>
+    <div class="sup-grid" id="supplier-cards"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<!-- ═══ SALES & TRENDS ══════════════════════════════════════════════ -->
+<div id="page-sales" class="page">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-hdr"><h2>Weekly Sales Trend</h2></div>
+      <div class="chart-wrap-lg"><canvas id="chart-sales-trend"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h2>Total Units Sold per Week</h2></div>
+      <div class="chart-wrap-lg"><canvas id="chart-sales-total"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-hdr"><h2>Sales Velocity by SKU (units/day)</h2></div>
+      <div class="chart-wrap"><canvas id="chart-velocity"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h2>Seasonality Index by SKU</h2><span style="font-size:11px;color:var(--muted)">1.0 = average month</span></div>
+      <div class="chart-wrap"><canvas id="chart-seasonality"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ INVENTORY ═══════════════════════════════════════════════════ -->
+<div id="page-inventory" class="page">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-hdr"><h2>Days of Stock vs 90-Day Target</h2></div>
+      <div class="chart-wrap-lg"><canvas id="chart-days-stock"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h2>🟡 Replenishment Needed</h2><span class="cnt" id="rep-cnt">—</span></div>
+      <div id="normal-list"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+  <div class="card mb">
+    <div class="card-hdr"><h2>Full Inventory Health Matrix</h2></div>
+    <div class="mx-wrap" id="inv-matrix"><div class="loading">Loading...</div></div>
+    <div class="leg">
+      <div class="li"><div class="ld" style="background:var(--cr-bg);border:1px solid var(--cr)"></div>Critical &lt;30d</div>
+      <div class="li"><div class="ld" style="background:var(--lw-bg);border:1px solid var(--lw)"></div>Low 30–90d</div>
+      <div class="li"><div class="ld" style="background:var(--ok-bg);border:1px solid var(--ok)"></div>Healthy 90–365d</div>
+      <div class="li"><div class="ld" style="background:var(--ov-bg);border:1px solid var(--ov)"></div>Overstock &gt;365d</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ WAREHOUSE COMPARISON ════════════════════════════════════════ -->
+<div id="page-warehouses" class="page">
+  <div class="filters" style="background:transparent;border:none;padding:0 0 16px">
+    <div class="filter-group">
+      <label>Compare SKU across warehouses:</label>
+      <select id="wc-sku" onchange="loadWarehouseComparison()"></select>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group">
+      <label>Compare all SKUs at warehouse:</label>
+      <select id="wc-wh" onchange="loadWarehouseComparison()"></select>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-hdr"><h2 id="wc-title-1">Days of Stock by Warehouse</h2></div>
+      <div class="chart-wrap-lg"><canvas id="chart-wh-days"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><h2 id="wc-title-2">Current Stock Units by Warehouse</h2></div>
+      <div class="chart-wrap-lg"><canvas id="chart-wh-units"></canvas></div>
+    </div>
+  </div>
+  <div class="card mb">
+    <div class="card-hdr"><h2 id="wc-title-3">All SKUs at Selected Warehouse</h2></div>
+    <div class="chart-wrap-lg"><canvas id="chart-wh-sku"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══ ACTION PLAN ══════════════════════════════════════════════════ -->
+<div id="page-action-plan" class="page">
+  <div class="section-title" style="margin-top:0">🔴 Critical — Order Immediately</div>
+  <div class="card mb" id="ap-urgent"><div class="loading">Loading...</div></div>
+
+  <div class="section-title">🟡 Replenishment Needed — Plan Now</div>
+  <div class="card mb" id="ap-normal"><div class="loading">Loading...</div></div>
+
+  <div class="section-title">📦 Active POs & Transfers in Progress</div>
+  <div class="card mb" id="ap-pos"><div class="loading">Loading...</div></div>
+</div>
+
+<!-- ═══ YEAR-AHEAD PLAN ══════════════════════════════════════════════ -->
+<div id="page-year-ahead" class="page">
+
+  <!-- Print run banner -->
+  <div id="ya-print-banner"><div class="loading">Loading...</div></div>
+
+  <!-- Summary counts -->
+  <div class="grid-5 mb" id="ya-counts" style="display:none"></div>
+
+  <!-- Print runs table (shown only when there are some) -->
+  <div id="ya-print-section" style="display:none">
+    <div class="section-title" style="margin-top:0">🖨️ New Print Runs Needed</div>
+    <div class="card mb" id="ya-print-rows"></div>
+  </div>
+
+  <!-- Distribution actions -->
+  <div class="section-title" id="ya-dist-title" style="margin-top:0">📦 Distribution Actions — Transfers &amp; Restocks</div>
+  <div id="ya-overdue-section" style="display:none">
+    <div class="section-title" style="margin-top:0;color:var(--cr)">🔴 Overdue</div>
+    <div class="card mb" id="ya-overdue"></div>
+  </div>
+  <div id="ya-urgent-section" style="display:none">
+    <div class="section-title" style="margin-top:0;color:#ea580c">🟠 Urgent</div>
+    <div class="card mb" id="ya-urgent"></div>
+  </div>
+  <div id="ya-plan-section" style="display:none">
+    <div class="section-title" style="margin-top:0;color:var(--lw)">🟡 Plan Now</div>
+    <div class="card mb" id="ya-plan"></div>
+  </div>
+  <div id="ya-upcoming-section" style="display:none">
+    <div class="section-title" style="margin-top:0;color:var(--ok)">🟢 Upcoming</div>
+    <div class="card mb" id="ya-upcoming"></div>
+  </div>
+
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let charts = {};
+let skuList = [], whList = [];
+let overviewData = null;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function fmt(n){ return n == null ? '—' : Number(n).toLocaleString(); }
+function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+
+function badgeHtml(type){
+  const t = (type||'').toLowerCase();
+  if(t.includes('transfer')) return '<span class="badge b-tr">Transfer</span>';
+  if(t.includes('awd'))      return '<span class="badge b-aw">AWD</span>';
+  return '<span class="badge b-po">New PO</span>';
+}
+
+function pillHtml(status){
+  const s = (status||'').toLowerCase();
+  let cls = 'p-or';
+  if(s.includes('ship'))       cls = 'p-sh';
+  if(s.includes('transit'))    cls = 'p-tr';
+  if(s.includes('production')) cls = 'p-pr';
+  return `<span class="pill ${cls}">${status}</span>`;
+}
+
+function switchTab(tab, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  btn.classList.add('active');
+  if(tab==='sales')       loadSales();
+  if(tab==='inventory')   loadInventory();
+  if(tab==='warehouses')  loadWarehouseComparison();
+  if(tab==='action-plan') loadActionPlan();
+  if(tab==='year-ahead')  loadYearAhead();
+}
+
+function applyFilters(){ loadSales(); loadInventory(); }
+function refreshAll(){ loadOverview(); loadSales(); if(document.getElementById('page-warehouses').classList.contains('active')) loadWarehouseComparison(); }
+
+// ── Overview ─────────────────────────────────────────────────────────────────
+async function loadOverview(){
+  const r = await fetch('/api/overview');
+  const d = await r.json();
+  overviewData = d;
+  document.getElementById('hdr-updated').textContent = d.generated;
+  document.getElementById('hdr-plan').textContent = d.plan_date !== 'Never' ? `Plan: ${d.plan_date}` : '';
+
+  // Summary cards
+  const c = d.counts || {};
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="scard v-cr"><div class="lbl">Critical</div><div class="val">${c.CRITICAL||0}</div><div class="sub">Need immediate action</div></div>
+    <div class="scard v-lw"><div class="lbl">Low Stock</div><div class="val">${c.LOW||0}</div><div class="sub">Need replenishment</div></div>
+    <div class="scard v-ok"><div class="lbl">Healthy</div><div class="val">${c.OK||0}</div><div class="sub">90–365 days of stock</div></div>
+    <div class="scard v-ov"><div class="lbl">Overstock</div><div class="val">${c.OVERSTOCK||0}</div><div class="sub">Over 365 days</div></div>
+    <div class="scard v-tr"><div class="lbl">In Transit</div><div class="val">${d.active_pos_count||0}</div><div class="sub">Active POs & transfers</div></div>`;
+
+  // Urgent actions
+  document.getElementById('urg-cnt').textContent = d.urgent.length;
+  document.getElementById('urgent-list').innerHTML = d.urgent.length
+    ? d.urgent.map(r=>`
+      <div class="arow">
+        <div class="adot cr-dot"></div>
+        <div>
+          <div class="asku">${r.SKU_Name} → ${r.Destination}</div>
+          <div class="adet">${badgeHtml(r.Action_Type)} from ${r.Recommended_Source} · ${r.Lead_Time_Days}d lead time</div>
+        </div>
+        <div>
+          <div class="adeadline">By ${r.Order_Deadline}</div>
+          <div class="aqty">${fmt(r.Units_Needed)} units</div>
+        </div>
+      </div>`).join('')
+    : '<div class="empty">No urgent actions — all critical items covered.</div>';
+
+  // PO table
+  document.getElementById('po-cnt').textContent = d.active_pos.length;
+  document.getElementById('po-table').innerHTML = d.active_pos.length
+    ? `<table class="tbl"><thead><tr><th>PO / ID</th><th>SKU</th><th>Qty</th><th>Route</th><th>ETA</th><th>Status</th></tr></thead><tbody>
+      ${d.active_pos.map(p=>`<tr>
+        <td><strong>${p.PO_ID}</strong></td>
+        <td>${p.SKU_Name}</td>
+        <td>${fmt(p.Qty_Ordered)}</td>
+        <td style="color:var(--muted)">${p.Origin} → ${p.Destination}</td>
+        <td>${p.Expected_Arrival}</td>
+        <td>${pillHtml(p.Status)}</td>
+      </tr>`).join('')}</tbody></table>`
+    : '<div class="empty">No active POs or transfers.</div>';
+
+  // Health matrix
+  renderMatrix('health-matrix', d);
+  renderMatrix('inv-matrix', d);
+
+  // Supplier
+  document.getElementById('supplier-cards').innerHTML = d.supplier.length
+    ? d.supplier.map(s=>`
+      <div class="sc">
+        <div class="sc-name">${s.SKU_Name}</div>
+        <div class="sc-row"><span>China</span><span>${fmt(Math.round(parseFloat(s.China_Supplier||0)))}</span></div>
+        <div class="sc-row"><span>Canada</span><span>${fmt(Math.round(parseFloat(s.Canada_Supplier||0)))}</span></div>
+      </div>`).join('')
+    : '<div class="empty" style="padding:16px">No supplier stock data.</div>';
+}
+
+function renderMatrix(elId, d){
+  const el = document.getElementById(elId);
+  if(!d.matrix || !d.matrix.length){ el.innerHTML='<div class="empty">No data.</div>'; return; }
+  const hdrCells = d.wh_labels.map(w=>`<th>${w}</th>`).join('');
+  const rows = d.matrix.map(row=>{
+    const cells = row.cells.map(c=>`<td><span class="mc ${c.cls}">${c.label}</span></td>`).join('');
+    return `<tr><td>${row.name}</td>${cells}</tr>`;
+  }).join('');
+  el.innerHTML = `<table class="mt"><thead><tr><th>SKU</th>${hdrCells}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ── Sales & Trends ────────────────────────────────────────────────────────────
+let salesCharts = {trend:null, total:null, vel:null, seas:null};
+
+async function loadSales(){
+  const sku = document.getElementById('f-sku').value;
+  const wh  = document.getElementById('f-wh').value;
+  const start = document.getElementById('f-start').value;
+  const end   = document.getElementById('f-end').value;
+
+  const [salesR, velR, seasR] = await Promise.all([
+    fetch(`/api/sales?sku=${sku}&warehouse=${wh}&start=${start}&end=${end}`).then(r=>r.json()),
+    fetch(`/api/velocity?warehouse=${wh}&sku=${sku}`).then(r=>r.json()),
+    fetch('/api/seasonality').then(r=>r.json()),
+  ]);
+
+  // Sales trend (per SKU)
+  destroyChart('sales-trend');
+  charts['sales-trend'] = new Chart(document.getElementById('chart-sales-trend'),{
+    type:'line',
+    data:{
+      labels: salesR.labels,
+      datasets: salesR.datasets.map(d=>({
+        label: d.sku,
+        data: d.data,
+        borderColor: d.color,
+        backgroundColor: d.color+'22',
+        borderWidth: 2,
+        pointRadius: 2,
+        tension: 0.3,
+        fill: false,
+      }))
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}}},
+      scales:{
+        x:{grid:{display:false},ticks:{maxTicksLimit:12,font:{size:10}}},
+        y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}
+      }}
+  });
+
+  // Total weekly units
+  destroyChart('sales-total');
+  charts['sales-total'] = new Chart(document.getElementById('chart-sales-total'),{
+    type:'bar',
+    data:{
+      labels: salesR.labels,
+      datasets:[{
+        label:'Total units/week',
+        data: salesR.totals,
+        backgroundColor:'#dbeafe',
+        borderColor:'#2563eb',
+        borderWidth:1,
+        borderRadius:3,
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{display:false},ticks:{maxTicksLimit:12,font:{size:10}}},
+        y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}
+      }}
+  });
+
+  // Velocity
+  destroyChart('velocity');
+  charts['velocity'] = new Chart(document.getElementById('chart-velocity'),{
+    type:'bar',
+    data:{
+      labels: velR.by_sku.map(d=>d.name.length>18?d.name.slice(0,18)+'…':d.name),
+      datasets:[{
+        label:'Units/day (90d avg)',
+        data: velR.by_sku.map(d=>d.velocity),
+        backgroundColor:'#d1fae5',borderColor:'#16a34a',borderWidth:1.5,borderRadius:5,
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}}}
+  });
+
+  // Seasonality
+  destroyChart('seasonality');
+  charts['seasonality'] = new Chart(document.getElementById('chart-seasonality'),{
+    type:'line',
+    data:{
+      labels: seasR.labels,
+      datasets: seasR.datasets.map(d=>({
+        label: d.name.length>18?d.name.slice(0,18)+'…':d.name,
+        data: d.data,
+        borderColor: d.color,
+        backgroundColor:'transparent',
+        borderWidth:2,
+        pointRadius:3,
+        tension:0.3,
+      }))
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},
+        annotation:{annotations:[{type:'line',yMin:1,yMax:1,borderColor:'#d1d5db',borderWidth:1,borderDash:[4,4]}]}
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}},min:0}
+      }}
+  });
+}
+
+// ── Inventory ────────────────────────────────────────────────────────────────
+async function loadInventory(){
+  if(!overviewData) await loadOverview();
+  const d = overviewData;
+
+  // Replenishment list
+  if(d.normal){
+    document.getElementById('rep-cnt').textContent = d.normal.length;
+    document.getElementById('normal-list').innerHTML = d.normal.length
+      ? d.normal.map(r=>`
+        <div class="arow">
+          <div class="adot lw-dot"></div>
+          <div>
+            <div class="asku">${r.SKU_Name} → ${r.Destination}</div>
+            <div class="adet">${badgeHtml(r.Action_Type)} from ${r.Recommended_Source} · ${r.Days_of_Stock} days left</div>
+          </div>
+          <div>
+            <div class="adeadline adeadline-lw">By ${r.Order_Deadline}</div>
+            <div class="aqty">${fmt(r.Units_Needed)} units</div>
+          </div>
+        </div>`).join('')
+      : '<div class="empty">No replenishment needed.</div>';
+  }
+
+  // Days of stock chart — flatten matrix
+  const labels=[], values=[], colors=[];
+  d.matrix.forEach(sku=>{
+    sku.cells.forEach((cell,i)=>{
+      if(cell.cls==='nd') return;
+      const days = parseFloat(cell.label)||0;
+      labels.push(`${sku.name.split(' ').slice(0,2).join(' ')} / ${d.wh_labels[i]}`);
+      values.push(days);
+      colors.push(cell.cls==='cr'?'#fecaca':cell.cls==='lw'?'#fde68a':cell.cls==='ov'?'#ddd6fe':'#bbf7d0');
+    });
+  });
+
+  destroyChart('days-stock');
+  charts['days-stock'] = new Chart(document.getElementById('chart-days-stock'),{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Days of Stock',data:values,backgroundColor:colors,borderRadius:3},
+        {label:'Target (90d)',data:Array(labels.length).fill(90),type:'line',borderColor:'#2563eb',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}},
+      scales:{
+        x:{grid:{color:'#f1f5f9'},ticks:{font:{size:9}}},
+        y:{grid:{display:false},ticks:{font:{size:9}}}
+      }}
+  });
+}
+
+// ── Warehouse Comparison ─────────────────────────────────────────────────────
+async function loadWarehouseComparison(){
+  const skuSel = document.getElementById('wc-sku');
+  const whSel  = document.getElementById('wc-wh');
+  if(!skuSel.value) return;
+
+  const r = await fetch(`/api/warehouse-comparison?sku=${skuSel.value}&warehouse=${whSel.value}`);
+  const d = await r.json();
+
+  document.getElementById('wc-title-1').textContent = `Days of Stock — ${d.sku_name} by Warehouse`;
+  document.getElementById('wc-title-2').textContent = `Units on Hand — ${d.sku_name} by Warehouse`;
+  document.getElementById('wc-title-3').textContent = `Days of Stock at ${d.wh_filter} — All SKUs`;
+
+  const dayColors = d.days_per_wh.map(w=>{
+    const v=w.days; return v<30?'#fecaca':v<90?'#fde68a':v>365?'#ddd6fe':'#bbf7d0';
+  });
+
+  destroyChart('wh-days');
+  charts['wh-days'] = new Chart(document.getElementById('chart-wh-days'),{
+    type:'bar',
+    data:{
+      labels: d.days_per_wh.map(w=>w.wh),
+      datasets:[
+        {label:'Days of Stock',data:d.days_per_wh.map(w=>w.days),backgroundColor:dayColors,borderRadius:5},
+        {label:'Target (90d)',data:Array(d.days_per_wh.length).fill(90),type:'line',borderColor:'#2563eb',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}}}
+  });
+
+  destroyChart('wh-units');
+  charts['wh-units'] = new Chart(document.getElementById('chart-wh-units'),{
+    type:'bar',
+    data:{
+      labels: d.stock_per_wh.map(w=>w.wh),
+      datasets:[{label:'Units on Hand',data:d.stock_per_wh.map(w=>w.units),backgroundColor:'#dbeafe',borderColor:'#2563eb',borderWidth:1,borderRadius:5}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}}}
+  });
+
+  const skuDayColors = d.days_per_sku.map(s=>{const v=s.days; return v<30?'#fecaca':v<90?'#fde68a':v>365?'#ddd6fe':'#bbf7d0';});
+  destroyChart('wh-sku');
+  charts['wh-sku'] = new Chart(document.getElementById('chart-wh-sku'),{
+    type:'bar',
+    data:{
+      labels: d.days_per_sku.map(s=>s.sku.length>20?s.sku.slice(0,20)+'…':s.sku),
+      datasets:[
+        {label:'Days of Stock',data:d.days_per_sku.map(s=>s.days),backgroundColor:skuDayColors,borderRadius:5},
+        {label:'Target (90d)',data:Array(d.days_per_sku.length).fill(90),type:'line',borderColor:'#2563eb',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}}}
+  });
+}
+
+// ── Action Plan ───────────────────────────────────────────────────────────────
+async function loadActionPlan(){
+  const r = await fetch('/api/action-plan');
+  const d = await r.json();
+
+  function actionRows(items, dotClass, deadlineClass){
+    if(!items.length) return '<div class="empty">None.</div>';
+    return items.map((r,i)=>{
+      const m = r.math || {};
+      const mathHtml = `
+        <div class="math-box" id="math-${dotClass}-${i}">
+          <div class="math-row"><strong>Current stock:</strong> ${fmt(m.current_stock)} units</div>
+          <div class="math-row"><strong>In transit:</strong> ${fmt(m.in_transit)} units</div>
+          <div class="math-row"><strong>90-day velocity:</strong> ${m.velocity_90d} units/day</div>
+          <div class="math-row"><strong>Seasonality factor:</strong> ${m.seasonality}× (${r.math?.plan_month||''})</div>
+          <div class="math-row"><strong>Adjusted velocity:</strong> ${m.velocity_90d} × ${m.seasonality} = <strong>${m.adj_velocity}</strong> units/day</div>
+          <div class="math-row"><strong>Days of stock:</strong> (${fmt(m.current_stock)} + ${fmt(m.in_transit)}) ÷ ${m.adj_velocity} = <strong>${m.days_of_stock}</strong> days</div>
+          <div class="math-row"><strong>Target:</strong> ${m.target_days} days &nbsp;|&nbsp; <strong>Gap:</strong> ${m.gap_days} days</div>
+          <div class="math-row"><strong>Units needed:</strong> ${m.gap_days} × ${m.adj_velocity} = <strong>${fmt(m.units_needed)}</strong></div>
+          <div class="math-row"><strong>Lead time from ${r.Recommended_Source}:</strong> ${m.lead_time} days</div>
+        </div>
+        <span class="math-toggle" onclick="toggleMath('${dotClass}-${i}')">Show calculation ▾</span>`;
+      return `
+        <div class="arow" style="align-items:start;padding:14px 18px">
+          <div class="adot ${dotClass}" style="margin-top:6px"></div>
+          <div>
+            <div class="asku">${r.SKU_Name} → ${r.Destination}</div>
+            <div class="adet">
+              ${badgeHtml(r.Action_Type)} from <strong>${r.Recommended_Source}</strong>
+              &nbsp;·&nbsp; Lead time: <strong>${r.Lead_Time_Days} days</strong>
+              &nbsp;·&nbsp; ETA: ${r.Estimated_Arrival}
+            </div>
+            ${m.units_needed ? mathHtml : ''}
+            ${r.Notes ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${r.Notes}</div>` : ''}
+          </div>
+          <div>
+            <div class="adeadline ${deadlineClass}">Order by ${r.Order_Deadline}</div>
+            <div class="aqty">${fmt(r.Units_Needed)} units</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  document.getElementById('ap-urgent').innerHTML = actionRows(d.urgent, 'cr-dot', '');
+  document.getElementById('ap-normal').innerHTML = actionRows(d.normal, 'lw-dot', 'adeadline-lw');
+
+  document.getElementById('ap-pos').innerHTML = d.active_pos.length
+    ? `<table class="tbl"><thead><tr><th>PO / ID</th><th>Type</th><th>SKU</th><th>Qty</th><th>From</th><th>To</th><th>Order Date</th><th>ETA</th><th>Status</th><th>Notes</th></tr></thead><tbody>
+      ${d.active_pos.map(p=>`<tr>
+        <td><strong>${p.PO_ID}</strong></td>
+        <td>${p.Type||''}</td>
+        <td>${p.SKU_Name}</td>
+        <td>${fmt(p.Qty_Ordered)}</td>
+        <td>${p.Origin}</td>
+        <td>${p.Destination}</td>
+        <td>${p.Order_Date||''}</td>
+        <td>${p.Expected_Arrival}</td>
+        <td>${pillHtml(p.Status)}</td>
+        <td style="font-size:11px;color:var(--muted)">${p.Notes||''}</td>
+      </tr>`).join('')}</tbody></table>`
+    : '<div class="empty">No active POs or transfers.</div>';
+}
+
+function toggleMath(id){
+  const box = document.getElementById('math-'+id);
+  const tog = box.nextElementSibling;
+  if(box.style.display==='block'){box.style.display='none';tog.textContent='Show calculation ▾';}
+  else{box.style.display='block';tog.textContent='Hide calculation ▴';}
+}
+
+// ── Year-Ahead Plan ───────────────────────────────────────────────────────────
+async function loadYearAhead(){
+  const r = await fetch('/api/annual-plan');
+  const d = await r.json();
+
+  const statusCls = {OVERDUE:'od', URGENT:'ur', 'PLAN NOW':'pl', UPCOMING:'up'};
+  const statusBadgeCls = {OVERDUE:'s-overdue', URGENT:'s-urgent', 'PLAN NOW':'s-plan', UPCOMING:'s-upcoming'};
+
+  // Print run banner
+  const banner = document.getElementById('ya-print-banner');
+  if(d.print_runs && d.print_runs.length){
+    banner.innerHTML = `<div class="print-banner">
+      <div class="print-icon">🖨️</div>
+      <div class="print-body">
+        <h3>${d.print_runs.length} New Print Run${d.print_runs.length>1?'s':''} Needed</h3>
+        <p>Global inventory is projected to fall below the ${d.print_runs.length>0?'90':'—'}-day safety buffer before the end of the planning horizon. Place production orders with your China supplier by the deadlines below.</p>
+      </div>
+    </div>`;
+    document.getElementById('ya-print-section').style.display = 'block';
+    document.getElementById('ya-print-rows').innerHTML = d.print_runs.map(a=>yaRowHtml(a, statusCls, statusBadgeCls)).join('');
+  } else {
+    banner.innerHTML = `<div class="print-banner print-banner-ok">
+      <div class="print-icon">✅</div>
+      <div class="print-body">
+        <h3>No new print runs needed</h3>
+        <p>Total global inventory is sufficient for all projected demand through the planning horizon, including Q4 seasonality peaks. Focus on the distribution actions below to get stock in the right places.</p>
+      </div>
+    </div>`;
+  }
+
+  // Summary count chips
+  const c = d.counts || {};
+  const countsEl = document.getElementById('ya-counts');
+  countsEl.style.display = 'grid';
+  countsEl.innerHTML = `
+    <div class="scard"><div class="lbl">Total Actions</div><div class="val">${d.total||0}</div><div class="sub">Transfers & restocks</div></div>
+    <div class="scard" style="border-color:var(--cr-b)"><div class="lbl">Overdue</div><div class="val" style="color:var(--cr)">${c.OVERDUE||0}</div><div class="sub">Action deadline passed</div></div>
+    <div class="scard" style="border-color:var(--lw-b)"><div class="lbl">Plan Now</div><div class="val" style="color:var(--lw)">${c['PLAN NOW']||0}</div><div class="sub">Within 90 days</div></div>
+    <div class="scard" style="border-color:var(--ok-b)"><div class="lbl">Upcoming</div><div class="val" style="color:var(--ok)">${c.UPCOMING||0}</div><div class="sub">Q3–Q4 preparation</div></div>
+    <div class="scard" style="border-color:#c4b5fd"><div class="lbl">Print Runs</div><div class="val" style="color:#6d28d9">${(d.print_runs||[]).length}</div><div class="sub">New POs with supplier</div></div>`;
+
+  // Distribution action groups
+  const groups = {OVERDUE:'overdue', URGENT:'urgent', 'PLAN NOW':'plan', UPCOMING:'upcoming'};
+  for(const [status, elKey] of Object.entries(groups)){
+    const items = (d.distribution||[]).filter(a=>a.Status===status);
+    const section = document.getElementById(`ya-${elKey}-section`);
+    const list    = document.getElementById(`ya-${elKey}`);
+    if(items.length){
+      section.style.display = 'block';
+      list.innerHTML = items.map(a=>yaRowHtml(a, statusCls, statusBadgeCls)).join('');
+    }
+  }
+
+  if(!d.total){
+    document.getElementById('ya-dist-title').style.display='none';
+    document.getElementById('ya-upcoming-section').innerHTML = '<div class="empty" style="padding:20px">No distribution actions in the plan. Run year_ahead_plan.py to generate the latest plan.</div>';
+    document.getElementById('ya-upcoming-section').style.display='block';
+  }
+}
+
+function yaRowHtml(a, statusCls, statusBadgeCls){
+  const daysNum = parseInt(a.Days_Until_Action||0);
+  const dlCls   = statusCls[a.Status] || 'up';
+  const bdgCls  = a.Action_Type === 'New PO (Print Run)' ? 's-print' : (statusBadgeCls[a.Status]||'s-upcoming');
+  const deadlineLabel = daysNum < 0
+    ? `OVERDUE by ${Math.abs(daysNum)}d`
+    : daysNum === 0 ? 'TODAY'
+    : `in ${daysNum}d`;
+  const actionBadge = a.Action_Type==='Transfer'
+    ? '<span class="badge b-tr">Transfer</span>'
+    : a.Action_Type==='New PO (Print Run)'
+      ? '<span class="badge" style="background:#ede9fe;color:#6d28d9">Print Run</span>'
+      : '<span class="badge b-po">New PO</span>';
+  const whLabel = a.Warehouse==='GLOBAL' ? '🌍 Global' : `→ ${a.Warehouse}`;
+  return `
+    <div class="ya-row">
+      <div><span class="ya-status ${bdgCls}">${a.Status}</span></div>
+      <div>
+        <div class="ya-sku">${a.SKU_Name} <span style="color:var(--muted);font-weight:400">${whLabel}</span></div>
+        <div class="ya-det">
+          ${actionBadge}
+          from <strong>${a.Source}</strong>
+          &nbsp;·&nbsp; ${fmt(a.Units_Needed)} units
+          &nbsp;·&nbsp; Lead time: ${a.Lead_Time_Days}d
+          &nbsp;·&nbsp; Runs low: <strong>${a.Stock_Runs_Low}</strong>
+        </div>
+        ${a.Notes ? `<div class="ya-note">${a.Notes}</div>` : ''}
+      </div>
+      <div>
+        <div class="ya-deadline ${dlCls}">By ${a.Action_Deadline}</div>
+        <div class="ya-qty">${deadlineLabel}</div>
+      </div>
+    </div>`;
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function init(){
+  // Set end date to today
+  document.getElementById('f-end').value = new Date().toISOString().split('T')[0];
+
+  // Load SKU + warehouse lists
+  const meta = await fetch('/api/skus').then(r=>r.json());
+  skuList = meta.skus;
+  whList  = meta.warehouses;
+
+  const skuSel = document.getElementById('f-sku');
+  const whSel  = document.getElementById('f-wh');
+  skuList.forEach(s=>{ skuSel.innerHTML += `<option value="${s.id}">${s.name}</option>`; });
+  whList.forEach(w=>{  whSel.innerHTML  += `<option value="${w.id}">${w.label}</option>`; });
+
+  const wcSku = document.getElementById('wc-sku');
+  const wcWh  = document.getElementById('wc-wh');
+  skuList.forEach(s=>{ wcSku.innerHTML += `<option value="${s.id}">${s.name}</option>`; });
+  whList.forEach(w=>{  wcWh.innerHTML  += `<option value="${w.id}">${w.label}</option>`; });
+
+  await loadOverview();
+
+  // Auto-refresh every 5 minutes
+  setInterval(()=>{ if(document.getElementById('page-overview').classList.contains('active')) loadOverview(); }, 300000);
+}
+
+init();
+</script>
+</body>
+</html>
