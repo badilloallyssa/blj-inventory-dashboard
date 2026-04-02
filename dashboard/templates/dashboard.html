@@ -182,6 +182,7 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
   <button onclick="switchTab('warehouses', this)">Warehouse Comparison</button>
   <button onclick="switchTab('action-plan', this)">Action Plan</button>
   <button onclick="switchTab('year-ahead', this)">Year-Ahead Plan</button>
+  <button onclick="switchTab('transfer-plan', this)">Transfer &amp; Print Plan</button>
 </div>
 
 <!-- Filter bar -->
@@ -365,6 +366,35 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
 
 </div>
 
+<!-- ═══ TRANSFER & PRINT PLAN ════════════════════════════════════════ -->
+<div id="page-transfer-plan" class="page">
+
+  <!-- Print run banner -->
+  <div id="tp-print-banner"></div>
+
+  <!-- Quarter summary chips -->
+  <div class="grid-3 mb" id="tp-quarter-counts" style="margin-top:16px"></div>
+
+  <!-- Q2 -->
+  <div id="tp-q2-section">
+    <div class="section-title" style="margin-top:0;font-size:14px;color:var(--blue)">Q2 — Apr / May / Jun</div>
+    <div id="tp-q2"></div>
+  </div>
+
+  <!-- Q3 -->
+  <div id="tp-q3-section" style="margin-top:24px">
+    <div class="section-title" style="font-size:14px;color:#7c3aed">Q3 — Jul / Aug / Sep</div>
+    <div id="tp-q3"></div>
+  </div>
+
+  <!-- Q4 -->
+  <div id="tp-q4-section" style="margin-top:24px">
+    <div class="section-title" style="font-size:14px;color:#dc2626">Q4 — Oct / Nov / Dec &nbsp;<span style="font-weight:400;font-size:12px;color:var(--muted)">BFCM season</span></div>
+    <div id="tp-q4"></div>
+  </div>
+
+</div>
+
 </div><!-- /main -->
 
 <script>
@@ -402,7 +432,8 @@ function switchTab(tab, btn){
   if(tab==='inventory')   loadInventory();
   if(tab==='warehouses')  loadWarehouseComparison();
   if(tab==='action-plan') loadActionPlan();
-  if(tab==='year-ahead')  loadYearAhead();
+  if(tab==='year-ahead')     loadYearAhead();
+  if(tab==='transfer-plan')  loadTransferPlan();
 }
 
 function applyFilters(){ loadSales(); loadInventory(); }
@@ -869,6 +900,107 @@ function yaRowHtml(a, statusCls, statusBadgeCls){
         <div class="ya-qty">${deadlineLabel}</div>
       </div>
     </div>`;
+}
+
+// ── Transfer & Print Plan ─────────────────────────────────────────────────────
+async function loadTransferPlan(){
+  const r = await fetch('/api/transfer-plan');
+  const d = await r.json();
+
+  // Print run banner
+  const banner = document.getElementById('tp-print-banner');
+  if(d.print_runs_needed && d.print_runs && d.print_runs.length){
+    banner.innerHTML = `<div class="print-banner">
+      <div class="print-icon">🖨️</div>
+      <div class="print-body">
+        <h3>${d.print_runs.length} Print Run${d.print_runs.length>1?'s':''} Required</h3>
+        <p>Global supply is insufficient. Place production orders by the deadlines below.</p>
+      </div>
+    </div>`;
+  } else {
+    banner.innerHTML = `<div class="print-banner print-banner-ok">
+      <div class="print-icon">✅</div>
+      <div class="print-body">
+        <h3>No new print runs needed</h3>
+        <p>Global inventory covers all demand through Q4 including BFCM. All actions below are warehouse-to-warehouse transfers or FBA restocks.</p>
+      </div>
+    </div>`;
+  }
+
+  // Quarter count chips
+  const t = d.totals || {};
+  document.getElementById('tp-quarter-counts').innerHTML = `
+    <div class="scard" style="border-color:#bfdbfe"><div class="lbl">Q2 Actions</div><div class="val" style="color:var(--blue)">${t.Q2||0}</div><div class="sub">Apr – Jun transfers</div></div>
+    <div class="scard" style="border-color:#ddd6fe"><div class="lbl">Q3 Actions</div><div class="val" style="color:#7c3aed">${t.Q3||0}</div><div class="sub">Jul – Sep transfers</div></div>
+    <div class="scard" style="border-color:var(--cr-b)"><div class="lbl">Q4 / BFCM Actions</div><div class="val" style="color:var(--cr)">${t.Q4||0}</div><div class="sub">Oct – Dec transfers</div></div>`;
+
+  // Render each quarter section
+  renderTPQuarter('tp-q2', d.Q2);
+  renderTPQuarter('tp-q3', d.Q3);
+  renderTPQuarter('tp-q4', d.Q4);
+}
+
+function renderTPQuarter(elId, qData){
+  const el = document.getElementById(elId);
+  if(!qData || !qData.by_warehouse || !Object.keys(qData.by_warehouse).length){
+    el.innerHTML = '<div class="empty" style="padding:12px 0">No transfers needed this quarter.</div>';
+    return;
+  }
+
+  const WH_ORDER = ['Amazon_US_FBA','Amazon_CA_FBA','SLI','HBG','SAV','KCM','CA','EU','UK','AU','GLOBAL'];
+  const WH_LABELS = {SLI:'SLI',HBG:'HBG',SAV:'SAV',KCM:'KCM',EU:'EU',CA:'CA',AU:'AU',UK:'UK',
+                     Amazon_US_FBA:'Amazon US FBA',Amazon_CA_FBA:'Amazon CA FBA',GLOBAL:'🌍 Global'};
+  const STATUS_COLOR = {OVERDUE:'var(--cr)',URGENT:'#ea580c','PLAN NOW':'var(--lw)',UPCOMING:'var(--ok)'};
+
+  const whs = Object.keys(qData.by_warehouse).sort((a,b)=>{
+    return (WH_ORDER.indexOf(a)+1||99) - (WH_ORDER.indexOf(b)+1||99);
+  });
+
+  el.innerHTML = whs.map(wh => {
+    const items = qData.by_warehouse[wh];
+    const rows = items.map(a => {
+      const daysNum = parseInt(a.days_until||0);
+      const dlLabel = daysNum < 0 ? `OVERDUE by ${Math.abs(daysNum)}d` : daysNum===0 ? 'TODAY' : `in ${daysNum}d`;
+      const statusColor = STATUS_COLOR[a.status] || 'var(--muted)';
+      const isTransfer = (a.action_type||'').toLowerCase().includes('transfer');
+      const isPrint    = (a.action_type||'').toLowerCase().includes('print');
+      const typeBadge  = isPrint
+        ? '<span class="badge" style="background:#ede9fe;color:#6d28d9">Print Run</span>'
+        : isTransfer ? '<span class="badge b-tr">Transfer</span>'
+        : '<span class="badge b-po">New PO</span>';
+      const seaNote = a.peak_sea ? `<span style="font-size:10px;color:var(--muted)"> (peak ${a.peak_sea}×)</span>` : '';
+      const stockNote = a.current_stock != null
+        ? `<span style="font-size:10px;color:var(--muted)"> · on hand: ${fmt(a.current_stock)}</span>` : '';
+      const demNote = a.q_demand != null
+        ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">
+             Qtr demand: ${fmt(a.q_demand)} · safety stock: ${fmt(a.safety_stock)}${seaNote}
+           </div>` : '';
+      return `<tr>
+        <td style="font-weight:600">${a.sku_name}${stockNote}</td>
+        <td>${typeBadge} from <strong>${a.source}</strong>${demNote}</td>
+        <td style="text-align:right;font-weight:700;font-size:14px">${fmt(a.units_needed)}</td>
+        <td style="color:${statusColor};font-weight:600;white-space:nowrap">${a.action_deadline}</td>
+        <td style="color:var(--muted);font-size:11px;white-space:nowrap">${dlLabel}</td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="card mb" style="margin-bottom:12px">
+      <div class="card-hdr" style="background:#fafaf9">
+        <h2 style="font-size:13px">${WH_LABELS[wh]||wh}</h2>
+        <span class="cnt">${items.length} action${items.length>1?'s':''}</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr>
+            <th>SKU</th><th>Action</th>
+            <th style="text-align:right">Units to Send</th>
+            <th>By Date</th><th>Urgency</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────

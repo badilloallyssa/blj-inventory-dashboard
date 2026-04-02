@@ -31,23 +31,36 @@ Before any tool can run, the Google Service Account must be configured:
 
 ---
 
-## Running a Monthly Plan
+## Default: Run Everything (say "run demand plan")
+
+When triggered, run all of the following in order, then show both links:
 
 ```bash
-# Full pipeline (pull data + calculate + write to sheet)
 python tools/run_demand_plan.py --plan-type monthly
-
-# For a specific future month
-python tools/run_demand_plan.py --plan-type monthly --plan-month 2025-06
-
-# Reuse cached data (skip re-pulling from sheet)
-python tools/run_demand_plan.py --plan-type monthly --skip-pull
+python tools/export_static_dashboard.py
 ```
+
+After both complete, always output:
+- **Google Sheet (Dashboard):** https://docs.google.com/spreadsheets/d/17WfI1Uv8kAf2UIzd6QaOTcb5xQl4s4uryoW2mYFPHZk/edit#gid=0
+- **HTML Dashboard:** https://badilloallyssa.github.io/blj-inventory-dashboard/
+
+Then summarize: CRITICAL count, LOW count, OVERSTOCK count.
 
 ## Running a Quarterly Plan
 
 ```bash
 python tools/run_demand_plan.py --plan-type quarterly
+python tools/export_static_dashboard.py
+```
+
+## Other Options
+
+```bash
+# For a specific future month
+python tools/run_demand_plan.py --plan-type monthly --plan-month 2025-06
+
+# Reuse cached data (skip re-pulling from sheet)
+python tools/run_demand_plan.py --plan-type monthly --skip-pull
 ```
 
 ---

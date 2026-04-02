@@ -170,6 +170,156 @@ def build_static_data():
         'total':       len(annual_rows),
     }
 
+    # ── Transfer Plan — seasonality-aware quarterly simulation ───────────────
+    import calendar as _cal
+    from datetime import date as _date, timedelta as _td
+
+    _MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    _US_WH = ['SLI', 'HBG', 'SAV', 'KCM']
+    _TODAY = _date.today()
+
+    # Read velocity + seasonality + data from .tmp/ files (fresh, not from sheet)
+    import json as _json
+    _vel_raw  = _json.load(open(os.path.join(PROJECT_ROOT, '.tmp/velocity.json')))
+    _sea_raw  = _json.load(open(os.path.join(PROJECT_ROOT, '.tmp/seasonality.json')))
+    _data_raw = _json.load(open(os.path.join(PROJECT_ROOT, '.tmp/data.json')))
+    _vel      = _vel_raw.get('velocity', {})
+    _sea_idx  = _sea_raw.get('indices', {})
+
+    _stock_idx = {e['sku_id']: {k: float(v) for k, v in e['stock'].items()}
+                  for e in _data_raw.get('current_stock', [])}
+    _sku_names = {s['sku_id']: s['sku_name'] for s in _data_raw.get('config', {}).get('skus', [])}
+    _pos       = _data_raw.get('pos', [])
+
+    def _sea(sku_id, month_num):
+        return float(_sea_idx.get(sku_id, {}).get(_MONTH_ABBR[month_num - 1], 1.0))
+
+    def _q_demand(sku_id, wh, months, year):
+        v90 = _vel.get(sku_id, {}).get(wh, {}).get('v90', 0.0)
+        if wh == 'Amazon_CA_FBA' and v90 == 0:
+            v90 = _vel.get(sku_id, {}).get('CA', {}).get('v90', 0.0)
+        if v90 == 0:
+            return 0.0, 0.0
+        total = sum(v90 * _sea(sku_id, m) * _cal.monthrange(year, m)[1] for m in months)
+        return total, v90
+
+    def _source_and_lead(wh, sku_id, cur_stocks):
+        stk = cur_stocks.get(sku_id, {})
+        if wh == 'Amazon_US_FBA':
+            best = max(_US_WH, key=lambda w: stk.get(w, 0))
+            if stk.get(best, 0) > 50:
+                return best, 21, 'Transfer'
+            return 'China_Supplier', 45, 'New PO'
+        if wh == 'Amazon_CA_FBA':
+            if stk.get('CA', 0) > 50:
+                return 'CA', 21, 'Transfer'
+            return 'Canada_Supplier', 21, 'New PO'
+        if wh in _US_WH:
+            best = max([w for w in _US_WH if w != wh], key=lambda w: stk.get(w, 0))
+            if stk.get(best, 0) > 100:
+                return best, 7, 'Transfer'
+            return 'China_Supplier', 45, 'New PO'
+        if wh == 'EU':
+            return ('UK', 21, 'Transfer') if stk.get('UK', 0) > 200 else ('China_Supplier', 75, 'New PO')
+        if wh == 'UK':
+            return ('EU', 21, 'Transfer') if stk.get('EU', 0) > 200 else ('China_Supplier', 75, 'New PO')
+        if wh == 'AU':
+            if stk.get('UK', 0) > 200: return 'UK', 60, 'Transfer'
+            if stk.get('EU', 0) > 200: return 'EU', 60, 'Transfer'
+            return 'China_Supplier', 45, 'New PO'
+        if wh == 'CA':
+            return 'Canada_Supplier', 14, 'New PO'
+        return 'China_Supplier', 60, 'New PO'
+
+    # Running stock — starts at current stock + in-transit POs
+    _run_stk = {sid: dict(whs) for sid, whs in _stock_idx.items()}
+    for _po in _pos:
+        _sid, _dst = _po['sku_id'], _po['destination']
+        if not any(s in _po.get('status', '').lower()
+                   for s in ('ordered', 'in production', 'shipped', 'in transit',
+                              'in-transit', 'pending')):
+            continue
+        if _sid in _run_stk and _dst in _run_stk[_sid]:
+            _run_stk[_sid][_dst] = _run_stk[_sid].get(_dst, 0) + float(_po.get('qty_ordered', 0))
+
+    _QUARTERS = [
+        {'name': 'Q2', 'months': [4, 5, 6],   'year': 2026, 'label': 'Q2 — Apr / May / Jun'},
+        {'name': 'Q3', 'months': [7, 8, 9],   'year': 2026, 'label': 'Q3 — Jul / Aug / Sep'},
+        {'name': 'Q4', 'months': [10, 11, 12],'year': 2026, 'label': 'Q4 — Oct / Nov / Dec (BFCM)'},
+    ]
+    _STATUS_O = {'OVERDUE': 0, 'URGENT': 1, 'PLAN NOW': 2, 'UPCOMING': 3}
+
+    _tp_results = {q['name']: defaultdict(list) for q in _QUARTERS}
+    _tp_totals  = {}
+
+    for _sku_id, _wh_stk in _stock_idx.items():
+        _sku_name = _sku_names.get(_sku_id, _sku_id)
+        for _wh in WAREHOUSES:
+            for _q in _QUARTERS:
+                _qname   = _q['name']
+                _months  = _q['months']
+                _year    = _q['year']
+
+                _qdem, _v90 = _q_demand(_sku_id, _wh, _months, _year)
+                if _v90 == 0:
+                    continue
+
+                _cur = _run_stk.get(_sku_id, {}).get(_wh, 0.0)
+
+                # Safety stock = 90 days × PEAK-month velocity in this quarter
+                # (ensures we're ready for the busiest month, not just average)
+                _peak_sea     = max(_sea(_sku_id, m) for m in _months)
+                _safety_stock = 90 * _v90 * _peak_sea
+
+                _needed = _qdem + _safety_stock
+                _units  = max(0, int(round(_needed - _cur)))
+
+                if _units > 0:
+                    _src, _lt, _atype = _source_and_lead(_wh, _sku_id, _run_stk)
+                    _q_start   = _date(_year, _months[0], 1)
+                    _deadline  = _q_start - _td(days=_lt)
+                    _days_till = (_deadline - _TODAY).days
+                    _status    = ('OVERDUE'   if _days_till < 0  else
+                                  'URGENT'    if _days_till <= 30 else
+                                  'PLAN NOW'  if _days_till <= 90 else 'UPCOMING')
+
+                    _tp_results[_qname][_wh].append({
+                        'sku_name':        _sku_name,
+                        'sku_id':          _sku_id,
+                        'warehouse':       _wh,
+                        'action_type':     _atype,
+                        'source':          _src,
+                        'units_needed':    _units,
+                        'q_demand':        int(round(_qdem)),
+                        'safety_stock':    int(round(_safety_stock)),
+                        'current_stock':   int(_cur),
+                        'peak_sea':        round(_peak_sea, 2),
+                        'action_deadline': _deadline.strftime('%Y-%m-%d'),
+                        'days_until':      _days_till,
+                        'status':          _status,
+                        'lead_time':       _lt,
+                    })
+
+                # Carry forward: deduct quarter demand, add transfer
+                _run_stk.setdefault(_sku_id, {})[_wh] = max(0.0, _cur - _qdem) + _units
+
+    for _q in _QUARTERS:
+        _qname = _q['name']
+        for _wh in _tp_results[_qname]:
+            _tp_results[_qname][_wh].sort(
+                key=lambda x: (_STATUS_O.get(x['status'], 9), x['action_deadline']))
+        _tp_totals[_qname] = sum(len(v) for v in _tp_results[_qname].values())
+
+    transfer_plan = {
+        'generated':         _TODAY.strftime('%Y-%m-%d'),
+        'print_runs_needed': len(print_runs) > 0,
+        'print_runs':        print_runs,
+        'totals':            _tp_totals,
+        'Q2': {'label': _QUARTERS[0]['label'], 'by_warehouse': {wh: items for wh, items in _tp_results['Q2'].items()}},
+        'Q3': {'label': _QUARTERS[1]['label'], 'by_warehouse': {wh: items for wh, items in _tp_results['Q3'].items()}},
+        'Q4': {'label': _QUARTERS[2]['label'], 'by_warehouse': {wh: items for wh, items in _tp_results['Q4'].items()}},
+    }
+
     # ── SKUs ─────────────────────────────────────────────────────────────────
     skus_data = {
         'skus':       [{'id': s['sku_id'], 'name': s['sku_name']} for s in skus],
@@ -187,6 +337,7 @@ def build_static_data():
         'health_raw': health_rows,
         'stock_raw':  stock_rows,
         'skus_list':  [{'id': s['sku_id'], 'name': s['sku_name']} for s in skus],
+        'transfer_plan': transfer_plan,
     }
 
 
@@ -314,6 +465,7 @@ INTERCEPTOR_JS = r"""
     if(path==='/api/seasonality')          return fakeResp(SD.seasonality);
     if(path==='/api/action-plan')          return fakeResp(SD.action_plan);
     if(path==='/api/annual-plan')          return fakeResp(SD.annual_plan);
+    if(path==='/api/transfer-plan')        return fakeResp(SD.transfer_plan);
     if(path==='/api/sales')                return fakeResp(computeSales(params));
     if(path==='/api/velocity')             return fakeResp(computeVelocity(params));
     if(path==='/api/warehouse-comparison') return fakeResp(computeWHComp(params));
