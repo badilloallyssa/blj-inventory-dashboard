@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 """
-Build transfer + print plan using 2025 actual monthly sales as demand forecast.
+Build transfer + print plan with mixed demand basis:
+  Q2 (Apr/May/Jun)  → current velocity (v90 × seasonality), since we're in Q2 now
+  Q3 (Jul-Sep) and Q4 (Oct-Dec) → 2025 actual monthly sales (better BFCM signal)
 
-Why 2025 actuals instead of v90 x seasonality:
-  The v90 is calculated over Jan-Mar 2026 (slowest months), which runs 60-87%
-  below 2025 actual sales. Using v90 x seasonality dramatically understates
-  real demand — especially for BFCM (Nov/Dec). We instead use each month's
-  2025 actual sales as the demand proxy for the same month in 2026.
-
-Key rules:
+Transfer routing rules:
   - No UK→US transfers
+  - UK can transfer to AU only (not EU directly)
+  - EU can transfer to UK
   - CA replenished from US warehouses (no new Canada prints)
   - Source warehouses never stripped below 25% buffer
-  - China/Canada supplier stock used when warehouse transfers insufficient
+  - China/Canada supplier used when warehouse transfers run out
+
+Print run deduplication:
+  - China_AWD and China_Supplier are the same factory → one print run per SKU
 
 Outputs:
-  .tmp/transfer_plan.json   — dashboard data
+  .tmp/transfer_plan.json
   Google Sheet: Transfer_Print_Plan tab
 
 Usage:
@@ -37,9 +38,8 @@ MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
 WAREHOUSES = ['SLI','HBG','SAV','KCM','EU','CA','AU','UK','Amazon_US_FBA','Amazon_CA_FBA']
 US_WH      = ['SLI','HBG','SAV','KCM']
 
-# Sales data uses these warehouse labels; map to physical stock locations
 SALES_WH_MAP = {
-    'US':            ['SLI','HBG','SAV','KCM'],  # US pool split evenly across 4 warehouses
+    'US':            ['SLI','HBG','SAV','KCM'],
     'Amazon_US_FBA': ['Amazon_US_FBA'],
     'CA':            ['CA'],
     'Amazon_CA_FBA': ['Amazon_CA_FBA'],
@@ -55,40 +55,33 @@ WH_REGION = {
     'EU':'EU','UK':'UK','AU':'AU',
 }
 
+# Q2 months use velocity-based demand; Q3/Q4 use 2025 actuals
+Q2_MONTHS = {4, 5, 6}
+
 
 def load_data():
     with open(os.path.join(PROJECT_ROOT, '.tmp/data.json')) as f:
-        data = json.load(f)
-    return data
+        return json.load(f)
 
 
 def build_2025_monthly_demand(data):
-    """
-    Build actual 2025 monthly sales per SKU per physical warehouse.
-    Sales data uses: US, Amazon_US_FBA, CA, UK, EU, AU
-    US sales are split evenly across SLI/HBG/SAV/KCM (4 warehouses).
-    Amazon_CA_FBA has no separate sales data; treat as 0 (CA warehouse covers CA demand).
-    """
+    """2025 actual monthly sales → physical warehouse demand."""
     sales = data.get('sales', [])
-    # raw: sku -> sales_wh -> month -> units
-    raw = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+    raw   = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 
     for row in sales:
         if str(row.get('year', '')) != '2025':
             continue
-        sid  = row.get('sku_id', '').strip()
-        wh   = row.get('warehouse', '').strip()
-        d    = row.get('date', '')
+        sid = row.get('sku_id', '').strip()
+        wh  = row.get('warehouse', '').strip()
+        d   = row.get('date', '')
         try:
             mo = int(d.split('-')[1]) if '-' in d else int(d.split('/')[0])
         except Exception:
             continue
         raw[sid][wh][mo] += float(row.get('units_sold', 0) or 0)
 
-    # Expand to physical warehouse demand
-    # monthly_demand[sid][wh][month] = units
     monthly_demand = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
-
     for sid, wh_data in raw.items():
         for sales_wh, month_data in wh_data.items():
             phys_whs = SALES_WH_MAP.get(sales_wh)
@@ -104,7 +97,12 @@ def build_2025_monthly_demand(data):
 
 def run_simulation():
     data           = load_data()
-    monthly_demand = build_2025_monthly_demand(data)
+    actual_2025    = build_2025_monthly_demand(data)
+
+    with open(os.path.join(PROJECT_ROOT, '.tmp/velocity.json')) as f:
+        vel_raw = json.load(f)['velocity']
+    with open(os.path.join(PROJECT_ROOT, '.tmp/seasonality.json')) as f:
+        sea_raw = json.load(f)['indices']
 
     sku_names = {s['sku_id']: s['sku_name'] for s in data['config']['skus']}
     sku_list  = [s['sku_id'] for s in data['config']['skus']]
@@ -119,36 +117,72 @@ def run_simulation():
         for e in data.get('supplier_stock', [])
     }
 
-    # Initialize stock from current snapshot + in-transit POs
-    stk = {e['sku_id']: {k: float(v) for k, v in e['stock'].items()}
-           for e in data['current_stock']}
-    for po in pos:
-        sid, dst = po['sku_id'], po['destination']
-        status = po.get('status', '').lower()
-        if not any(s in status for s in
-                   ('ordered','in production','shipped','in transit','in-transit','pending')):
-            continue
-        stk.setdefault(sid, {})[dst] = stk.get(sid, {}).get(dst, 0) + float(po.get('qty_ordered', 0))
+    # ── Velocity helpers (Q2 demand) ─────────────────────────────────────────
+    def v90_raw(sid, wh):
+        v = vel_raw.get(sid, {}).get(wh, {}).get('v90', 0.0)
+        if v == 0 and wh in ('Amazon_CA_FBA', 'CA'):
+            # CA FBA uses CA warehouse velocity
+            v = vel_raw.get(sid, {}).get('CA', {}).get('v90', 0.0)
+        return v
 
+    def v90(sid, wh):
+        """Per-warehouse daily velocity. US pool split evenly across 4 warehouses."""
+        if wh in US_WH:
+            return v90_raw(sid, 'US') / len(US_WH)
+        return v90_raw(sid, wh)
+
+    def sea(sid, m):
+        return float(sea_raw.get(sid, {}).get(MONTH_ABBR[m - 1], 1.0))
+
+    def velocity_demand(sid, wh, m):
+        """v90 × seasonality × days — used for Q2."""
+        return v90(sid, wh) * sea(sid, m) * calendar.monthrange(2026, m)[1]
+
+    # ── Mixed demand function ─────────────────────────────────────────────────
     def demand_for(sid, wh, m):
-        """2025 actual units sold in month m, at physical warehouse wh."""
-        return monthly_demand.get(sid, {}).get(wh, {}).get(m, 0.0)
+        """Q2: velocity-based. Q3/Q4: 2025 actual. Falls back to velocity if no 2025 data."""
+        if m in Q2_MONTHS:
+            return velocity_demand(sid, wh, m)
+        actual = actual_2025.get(sid, {}).get(wh, {}).get(m, 0.0)
+        if actual > 0:
+            return actual
+        # Fallback for SKUs with no 2025 history in that warehouse
+        return velocity_demand(sid, wh, m)
+
+    def has_demand(sid, wh, m):
+        """True if this warehouse has any expected demand this month."""
+        return demand_for(sid, wh, m) > 0
 
     def safety_for(sid, wh, m):
-        """
-        Safety stock = sum of demand for the next 2 months after m.
-        This gives us a forward-looking buffer so we order before we run out.
-        """
+        """Buffer = next 2 months of expected demand (forward-looking)."""
         total = 0.0
         for offset in range(1, 3):
             nm = (m - 1 + offset) % 12 + 1
             total += demand_for(sid, wh, nm)
         return total
 
+    # ── Stock initialisation ──────────────────────────────────────────────────
+    stk = {e['sku_id']: {k: float(v) for k, v in e['stock'].items()}
+           for e in data['current_stock']}
+    for po in pos:
+        sid, dst = po['sku_id'], po['destination']
+        status   = po.get('status', '').lower()
+        if not any(s in status for s in
+                   ('ordered','in production','shipped','in transit','in-transit','pending')):
+            continue
+        stk.setdefault(sid, {})[dst] = stk.get(sid, {}).get(dst, 0) + float(po.get('qty_ordered', 0))
+
+    # ── Source routing ────────────────────────────────────────────────────────
     def get_sources(wh, sid):
+        """
+        Priority-ordered list of (source, lead_days, is_new_po).
+        UK transfers: only to AU (not US, not EU directly).
+        EU receives from China only (UK can't send to EU directly now).
+        """
         us_sorted = sorted(US_WH, key=lambda w: stk.get(sid, {}).get(w, 0), reverse=True)
+
         if wh == 'Amazon_US_FBA':
-            return [(w, 7, False) for w in us_sorted] + [('China_AWD', 60, True)]
+            return [(w, 7, False) for w in us_sorted] + [('China_Supplier', 60, True)]
         if wh == 'Amazon_CA_FBA':
             return [('CA', 14, False), ('China_Supplier', 60, True)]
         if wh in US_WH:
@@ -156,21 +190,25 @@ def run_simulation():
                             key=lambda w: stk.get(sid, {}).get(w, 0), reverse=True)
             return [(w, 3, False) for w in others] + [('China_Supplier', 45, True)]
         if wh == 'CA':
-            # Transfer from US warehouses; no new Canada prints
+            # Transfer from US warehouses first, then China
             return [(w, 14, False) for w in us_sorted] + [('China_Supplier', 60, True)]
         if wh == 'EU':
-            return [('UK', 21, False), ('China_Supplier', 75, True)]
+            # UK cannot send to EU; EU sources from China only
+            return [('China_Supplier', 75, True)]
         if wh == 'UK':
             return [('EU', 21, False), ('China_Supplier', 75, True)]
         if wh == 'AU':
-            return [('UK', 60, False), ('EU', 60, False), ('China_Supplier', 60, True)]
+            # UK can transfer to AU; also China
+            return [('UK', 60, False), ('China_Supplier', 60, True)]
         return [('China_Supplier', 60, True)]
 
-    QUARTER_OF   = {4:'Q2',5:'Q2',6:'Q2', 7:'Q3',8:'Q3',9:'Q3', 10:'Q4',11:'Q4',12:'Q4'}
-    po_new        = defaultdict(float)
+    QUARTER_OF    = {4:'Q2',5:'Q2',6:'Q2', 7:'Q3',8:'Q3',9:'Q3', 10:'Q4',11:'Q4',12:'Q4'}
+    # (sid, 'China') → total units needed from China regardless of AWD/Supplier split
+    po_new_china  = defaultdict(float)
+    po_new_canada = defaultdict(float)
     transfers_raw = defaultdict(list)
     action_log    = []
-    monthly_forecast = {}  # for dashboard
+    monthly_forecast = {}
 
     y, m = TODAY.year, TODAY.month
 
@@ -179,14 +217,14 @@ def run_simulation():
             break
         q           = QUARTER_OF.get(m, 'other')
         month_label = f'{MONTH_ABBR[m - 1]} {y}'
+        basis       = 'velocity' if m in Q2_MONTHS else '2025 actuals'
 
-        # --- Build forecast snapshot (2025 actuals for this month) ---
-
+        # ── Forecast snapshot ─────────────────────────────────────────────
         mfc = {}
         for sid in sku_list:
             mfc[sid] = defaultdict(float)
             for wh in WAREHOUSES:
-                d = demand_for(sid, wh, m)
+                d      = demand_for(sid, wh, m)
                 region = WH_REGION.get(wh, wh)
                 mfc[sid][region] += d
         monthly_forecast[month_label] = {
@@ -194,38 +232,41 @@ def run_simulation():
             for sid, regions in mfc.items()
         }
 
-        # --- Deduct this month's demand ---
+        # ── Deduct demand ─────────────────────────────────────────────────
         for sid in stk:
             for wh in WAREHOUSES:
                 stk[sid][wh] = stk[sid].get(wh, 0) - demand_for(sid, wh, m)
 
-        # --- Check & replenish ---
+        # ── Replenish ─────────────────────────────────────────────────────
         for sid in stk:
             for wh in WAREHOUSES:
-                this_demand = demand_for(sid, wh, m)
-                if this_demand == 0:
-                    continue  # no sales at this warehouse, skip
+                if not has_demand(sid, wh, m):
+                    continue
 
                 safety    = safety_for(sid, wh, m)
                 current   = stk[sid].get(wh, 0)
-
                 if current >= safety:
                     continue
 
-                shortfall = safety - current
-                days_stock = max(0, current) / (this_demand / calendar.monthrange(y, m)[1]) \
-                             if this_demand > 0 else 9999
+                shortfall  = safety - current
+                mo_demand  = demand_for(sid, wh, m)
+                days_stock = max(0, current) / (mo_demand / calendar.monthrange(y, m)[1]) \
+                             if mo_demand > 0 else 9999
 
                 for (src, lead, is_po) in get_sources(wh, sid):
                     if shortfall <= 0:
                         break
                     if is_po:
-                        po_new[(sid, src)] += shortfall
+                        # Consolidate all China sources under one key per SKU
+                        if 'China' in src or 'AWD' in src:
+                            po_new_china[sid] += shortfall
+                        else:
+                            po_new_canada[sid] += shortfall
                         stk[sid][wh] = stk[sid].get(wh, 0) + shortfall
                         reason = (
-                            f"After {month_label} sales, {sku_names.get(sid,sid)} at {wh} "
-                            f"has only ~{int(days_stock)}d of stock remaining. "
-                            f"No warehouse stock available to transfer — ordering {int(shortfall):,} units from {src}."
+                            f"After {month_label} sales ({basis}), "
+                            f"{sku_names.get(sid,sid)} at {wh} has ~{int(days_stock)}d of stock. "
+                            f"No warehouse available — ordering {int(shortfall):,} units from {src}."
                         )
                         if q in ('Q2','Q3','Q4'):
                             action_log.append({'month':month_label,'quarter':q,
@@ -245,12 +286,12 @@ def run_simulation():
                         stk[sid][src] = src_stock - moved
                         stk[sid][wh]  = stk[sid].get(wh, 0) + moved
 
-                        next_mo_demand = demand_for(sid, src, (m % 12) + 1)
-                        src_days = int(max(0, src_stock) / (next_mo_demand / 30)) \
-                                   if next_mo_demand > 0 else 9999
+                        next_mo_d = demand_for(sid, src, (m % 12) + 1)
+                        src_days  = int(max(0, src_stock) / (next_mo_d / 30)) \
+                                    if next_mo_d > 0 else 9999
                         reason = (
-                            f"After {month_label} sales, {sku_names.get(sid,sid)} at {wh} "
-                            f"drops to ~{int(days_stock)}d of stock "
+                            f"After {month_label} sales ({basis}), "
+                            f"{sku_names.get(sid,sid)} at {wh} drops to ~{int(days_stock)}d of stock "
                             f"(next 2 months need {int(safety):,} units as buffer). "
                             f"Transfer {int(moved):,} units from {src} "
                             f"({src} has {int(src_stock):,} units / ~{src_days}d to spare)."
@@ -269,8 +310,8 @@ def run_simulation():
         else:
             m += 1
 
-    # --- End-of-year snapshot ---
-    print("\n=== END-OF-YEAR STOCK SNAPSHOT (after all 2025-pace sales + transfers) ===")
+    # ── End-of-year snapshot ──────────────────────────────────────────────────
+    print("\n=== END-OF-YEAR STOCK SNAPSHOT ===")
     for sid in sku_list:
         if sid not in stk:
             continue
@@ -278,71 +319,76 @@ def run_simulation():
         print(f"\n{name}:")
         for wh in WAREHOUSES:
             remaining = stk[sid].get(wh, 0)
-            monthly_d = demand_for(sid, wh, 11)  # use Nov as proxy for burn rate
-            dos = remaining / (monthly_d / 30) if monthly_d > 0 else 9999
-            flag = ' ⚠️  STOCKOUT' if remaining < 0 else (' ⚠️  LOW (<30d)' if dos < 30 and monthly_d > 0 else '')
-            print(f"  {wh:20s}: {int(remaining):7,} units  (~{int(dos)}d){flag}")
+            mo_d      = demand_for(sid, wh, 11)  # Nov as burn-rate proxy
+            dos       = remaining / (mo_d / 30) if mo_d > 0 else 9999
+            flag      = ' ⚠️  STOCKOUT' if remaining < 0 else \
+                        (' ⚠️  LOW' if dos < 30 and mo_d > 0 else '')
+            print(f"  {wh:20s}: {int(remaining):7,}  (~{int(dos)}d){flag}")
 
-    # --- Roll up print runs ---
-    print_runs     = []
+    # ── Roll up print runs (one entry per SKU per supplier) ───────────────────
+    print_runs      = []
     supplier_orders = []
     run_date        = date.today().strftime('%Y-%m-%d')
 
-    for (sid, src), qty in po_new.items():
+    for sid, qty in po_new_china.items():
         qty  = int(round(qty))
         name = sku_names.get(sid, sid)
         sup  = supplier_stock.get(sid, {})
+        china_avail = int(sup.get('china', 0))
 
-        if 'China' in src or 'AWD' in src:
-            china_avail = int(sup.get('china', 0))
-            if china_avail >= qty:
+        if china_avail >= qty:
+            supplier_orders.append({
+                'sku_id':sid,'sku_name':name,'source':'China_Supplier',
+                'units_needed':qty,'supplier_stock':china_avail,
+                'covered':True,'order_by':'2026-08-02',
+                'type':'Supplier Order','run_date':run_date,
+                'notes':f'China has {china_avail:,} in stock — fully covered. Place order now.',
+            })
+        else:
+            gap = qty - china_avail
+            if china_avail > 0:
                 supplier_orders.append({
-                    'sku_id':sid,'sku_name':name,'source':src,
-                    'units_needed':qty,'supplier_stock':china_avail,
+                    'sku_id':sid,'sku_name':name,'source':'China_Supplier',
+                    'units_needed':china_avail,'supplier_stock':china_avail,
                     'covered':True,'order_by':'2026-08-02',
                     'type':'Supplier Order','run_date':run_date,
-                    'notes':f'China has {china_avail:,} in stock — covered, place order now.',
+                    'notes':f'China has {china_avail:,} available — order all of it now.',
                 })
-            else:
-                gap = qty - china_avail
-                if china_avail > 0:
-                    supplier_orders.append({
-                        'sku_id':sid,'sku_name':name,'source':src,
-                        'units_needed':china_avail,'supplier_stock':china_avail,
-                        'covered':True,'order_by':'2026-08-02',
-                        'type':'Supplier Order','run_date':run_date,
-                        'notes':f'China has {china_avail:,} — order all available stock now.',
-                    })
-                print_runs.append({
-                    'sku_id':sid,'sku_name':name,'source':'China_Supplier',
-                    'units_needed':gap,'supplier_stock':china_avail,
-                    'order_by':'2026-08-02','type':'Print Run','run_date':run_date,
-                    'notes':(
-                        f'China has {china_avail:,} available but {qty:,} needed total — '
-                        f'short {gap:,} units. New production run required. '
-                        f'Order by Aug 2 → arrives mid-Sep → in FBA/warehouses by Oct 1 for BFCM.'
-                    ),
-                })
-        elif 'Canada' in src:
-            canada_avail = int(sup.get('canada', 0))
-            if canada_avail >= qty:
-                supplier_orders.append({
-                    'sku_id':sid,'sku_name':name,'source':src,
-                    'units_needed':qty,'supplier_stock':canada_avail,
-                    'covered':True,'order_by':'2026-09-01',
-                    'type':'Supplier Order','run_date':run_date,
-                    'notes':f'Canada has {canada_avail:,} — covered.',
-                })
-            else:
-                gap = qty - canada_avail
-                print_runs.append({
-                    'sku_id':sid,'sku_name':name,'source':'Canada_Supplier',
-                    'units_needed':gap,'supplier_stock':canada_avail,
-                    'order_by':'2026-09-01','type':'Print Run','run_date':run_date,
-                    'notes':f'Canada has {canada_avail:,}, short {gap:,} — new production needed.',
-                })
+            print_runs.append({
+                'sku_id':sid,'sku_name':name,'source':'China_Supplier',
+                'units_needed':gap,'supplier_stock':china_avail,
+                'order_by':'2026-08-02','type':'Print Run','run_date':run_date,
+                'notes':(
+                    f'Need {qty:,} units total from China; only {china_avail:,} in existing stock. '
+                    f'New production run of {gap:,} units required. '
+                    f'Order by Aug 2 → production ~6 weeks → arrives Sep → in warehouses/FBA by Oct 1 for BFCM.'
+                ),
+            })
 
-    # --- Deduplicate transfers ---
+    for sid, qty in po_new_canada.items():
+        qty  = int(round(qty))
+        name = sku_names.get(sid, sid)
+        sup  = supplier_stock.get(sid, {})
+        canada_avail = int(sup.get('canada', 0))
+
+        if canada_avail >= qty:
+            supplier_orders.append({
+                'sku_id':sid,'sku_name':name,'source':'Canada_Supplier',
+                'units_needed':qty,'supplier_stock':canada_avail,
+                'covered':True,'order_by':'2026-09-01',
+                'type':'Supplier Order','run_date':run_date,
+                'notes':f'Canada has {canada_avail:,} — covered.',
+            })
+        else:
+            gap = qty - canada_avail
+            print_runs.append({
+                'sku_id':sid,'sku_name':name,'source':'Canada_Supplier',
+                'units_needed':gap,'supplier_stock':canada_avail,
+                'order_by':'2026-09-01','type':'Print Run','run_date':run_date,
+                'notes':f'Canada has {canada_avail:,}, short {gap:,} — new production needed.',
+            })
+
+    # ── Deduplicate transfers ──────────────────────────────────────────────────
     transfers_deduped = {}
     for q, rows in transfers_raw.items():
         dedup = defaultdict(int)
@@ -355,9 +401,9 @@ def run_simulation():
 
     WH_ORDER = ['Amazon_US_FBA','Amazon_CA_FBA','SLI','HBG','SAV','KCM','CA','EU','UK','AU']
     Q_LABELS = {
-        'Q2':'Q2 — Apr / May / Jun',
-        'Q3':'Q3 — Jul / Aug / Sep',
-        'Q4':'Q4 — Oct / Nov / Dec (BFCM)',
+        'Q2':'Q2 — Apr / May / Jun  (velocity-based forecast)',
+        'Q3':'Q3 — Jul / Aug / Sep  (2025 actual sales)',
+        'Q4':'Q4 — Oct / Nov / Dec  (2025 actual sales · BFCM)',
     }
 
     def by_wh(rows):
@@ -365,7 +411,6 @@ def run_simulation():
         for r in rows: groups[r['wh']].append(r)
         return {wh: groups[wh] for wh in WH_ORDER if wh in groups}
 
-    # Annual totals per SKU per region
     annual_totals = defaultdict(lambda: defaultdict(float))
     for month_label, skus in monthly_forecast.items():
         for sid, regions in skus.items():
@@ -383,7 +428,7 @@ def run_simulation():
         'annual_totals':    annual_totals,
         'action_log':       action_log,
         'sku_names':        sku_names,
-        'forecast_basis':   '2025 actual monthly sales',
+        'forecast_basis':   'Q2: velocity × seasonality  |  Q3/Q4: 2025 actual monthly sales',
     }
     for q in ('Q2','Q3','Q4'):
         rows      = transfers_deduped.get(q, [])
@@ -411,15 +456,17 @@ def write_to_sheet(result):
     for q in ('Q2','Q3','Q4'):
         for wh, items in result.get(q,{}).get('by_warehouse',{}).items():
             for item in items:
-                rows.append([q, item['sku'], wh, item['src'], item['qty'], item['type']])
+                rows.append([q,item['sku'],wh,item['src'],item['qty'],item['type']])
     rows.append([])
 
-    rows.append(['Month','SKU','US_Units','US_FBA_Units','CA_Units','EU_Units','UK_Units','AU_Units','Total'])
+    rows.append(['Month','Forecast_Basis','SKU','US_Units','US_FBA_Units','CA_Units','EU_Units','UK_Units','AU_Units','Total'])
     for month_label, skus in result.get('monthly_forecast',{}).items():
+        basis = 'velocity' if any(f' {mo} ' in month_label or month_label.startswith(mo)
+                                  for mo in ('Apr','May','Jun')) else '2025 actuals'
         for sid, regions in skus.items():
             total = sum(regions.values())
             rows.append([
-                month_label, result['sku_names'].get(sid, sid),
+                month_label, basis, result['sku_names'].get(sid, sid),
                 regions.get('US',0), regions.get('US FBA',0),
                 regions.get('CA',0), regions.get('EU',0),
                 regions.get('UK',0), regions.get('AU',0),
@@ -432,7 +479,12 @@ def write_to_sheet(result):
 
 
 def main():
-    print("Running month-by-month simulation (demand basis: 2025 actual monthly sales)...")
+    print("Running simulation...")
+    print("  Q2 demand: v90 × seasonality (current velocity)")
+    print("  Q3/Q4 demand: 2025 actual monthly sales")
+    print("  UK transfers: AU only (not US, not EU)")
+    print("  CA replenishment: US warehouses → CA transfer")
+
     result = run_simulation()
 
     print(f"\n  Print runs needed:  {len(result['print_runs'])}")
@@ -443,15 +495,15 @@ def main():
     if result['print_runs']:
         print("\n  *** PRINT RUNS NEEDED ***")
         for r in result['print_runs']:
-            print(f"    {r['sku_name']}: {r['units_needed']:,} units — order by {r['order_by']}")
+            print(f"    {r['sku_name']}: {r['units_needed']:,} units from {r['source']} — order by {r['order_by']}")
             print(f"    → {r['notes']}")
     else:
-        print("\n  No new print runs needed — all replenishment covered by transfers + existing supplier stock.")
+        print("\n  No new print runs needed.")
 
     if result['supplier_orders']:
-        print("\n  Supplier orders (use existing stock):")
+        print("\n  Supplier orders (existing stock, place order now):")
         for r in result['supplier_orders']:
-            print(f"    {r['sku_name']}: {r['units_needed']:,} from {r['source']} (has {r['supplier_stock']:,}) — order by {r['order_by']}")
+            print(f"    {r['sku_name']}: {r['units_needed']:,} from {r['source']} (has {r['supplier_stock']:,}) — by {r['order_by']}")
 
     tmp_dir  = os.path.join(PROJECT_ROOT, '.tmp')
     os.makedirs(tmp_dir, exist_ok=True)
