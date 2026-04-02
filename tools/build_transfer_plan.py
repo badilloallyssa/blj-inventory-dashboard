@@ -157,7 +157,10 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
         return a if a > 0 else vel_demand(sid, wh, m)
 
     GEO_WHS = {
-        'US_POOL':       US_WH,
+        'SLI':           ['SLI'],
+        'HBG':           ['HBG'],
+        'SAV':           ['SAV'],
+        'KCM':           ['KCM'],
         'Amazon_US_FBA': ['Amazon_US_FBA'],
         'CA':            ['CA'],
         'Amazon_CA_FBA': ['Amazon_CA_FBA'],
@@ -165,9 +168,10 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
         'EU':            ['EU'],
         'AU':            ['AU'],
     }
-    ALL_GEOS  = list(GEO_WHS.keys())
-    US_GEOS   = ['US_POOL', 'Amazon_US_FBA', 'CA', 'Amazon_CA_FBA']
-    INTL_GEOS = ['UK', 'EU', 'AU']
+    ALL_GEOS    = list(GEO_WHS.keys())
+    US_WH_GEOS  = ['SLI', 'HBG', 'SAV', 'KCM']
+    US_GEOS     = ['SLI', 'HBG', 'SAV', 'KCM', 'Amazon_US_FBA', 'CA', 'Amazon_CA_FBA']
+    INTL_GEOS   = ['UK', 'EU', 'AU']
 
     print_runs      = []
     supplier_orders = []
@@ -182,28 +186,21 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
         # ── Per-GEO stock and demand ────────────────────────────────────────
         # demand = Apr 2–Dec 31  +  Jan+Feb 2027 carry-over (2025 actuals)
         geo_stock    = {}
-        geo_dem_sell = {}   # Apr–Dec selling demand
-        geo_dem_co   = {}   # Jan+Feb carry-over target
-        geo_demand   = {}   # total = sell + carry-over
+        geo_dem_sell = {}
+        geo_dem_co   = {}
+        geo_demand   = {}
 
         for geo, whs in GEO_WHS.items():
             stock = sum(stk.get(sid, {}).get(w, 0) for w in whs)
-            if geo == 'US_POOL':
-                sell = sum(actual_dem(sid, w, 4) for w in whs) * APR_FACTOR
-                for m in range(5, 13):
-                    sell += sum(actual_dem(sid, w, m) for w in whs)
-                co = sum(actual_dem(sid, w, 1) + actual_dem(sid, w, 2) for w in whs)
-            else:
-                sell = actual_dem(sid, whs[0], 4) * APR_FACTOR
-                for m in range(5, 13):
-                    sell += actual_dem(sid, whs[0], m)
-                co = actual_dem(sid, whs[0], 1) + actual_dem(sid, whs[0], 2)
+            sell  = actual_dem(sid, whs[0], 4) * APR_FACTOR
+            for m in range(5, 13):
+                sell += actual_dem(sid, whs[0], m)
+            co = actual_dem(sid, whs[0], 1) + actual_dem(sid, whs[0], 2)
             geo_stock[geo]    = stock
             geo_dem_sell[geo] = sell
             geo_dem_co[geo]   = co
             geo_demand[geo]   = sell + co
 
-        # gap > 0 = surplus, gap < 0 = deficit (must have enough for sell+carry-over)
         geo_gap = {geo: geo_stock[geo] - geo_demand[geo] for geo in ALL_GEOS}
 
         # ── Step A: Transfers (respect 25 % source buffer) ─────────────────
@@ -222,8 +219,16 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
             geo_gap[dst] += moved
             transfer_log.append((src, dst, int(moved)))
 
-        do_transfer('US_POOL', 'Amazon_US_FBA')
-        do_transfer('US_POOL', 'CA')
+        # US warehouse internal balancing first
+        for src in US_WH_GEOS:
+            for dst in US_WH_GEOS:
+                if src != dst:
+                    do_transfer(src, dst)
+        # US warehouse surplus → FBA, then CA
+        for dst in ['Amazon_US_FBA', 'CA']:
+            for src in sorted(US_WH_GEOS, key=lambda g: geo_gap.get(g, 0), reverse=True):
+                do_transfer(src, dst)
+        # Intl
         do_transfer('UK', 'AU')
         do_transfer('EU', 'AU')
         do_transfer('UK', 'EU')
@@ -233,7 +238,7 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
         remaining_sup = total_supplier
         sup_used_by   = {}
 
-        for geo in ['Amazon_US_FBA', 'CA', 'US_POOL', 'AU', 'EU', 'UK']:
+        for geo in ['Amazon_US_FBA', 'CA', 'SLI', 'HBG', 'SAV', 'KCM', 'AU', 'EU', 'UK']:
             if remaining_sup <= 0:
                 break
             deficit = max(0.0, -geo_gap[geo])
@@ -250,9 +255,9 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
         supplier_used = total_supplier - remaining_sup
 
         # Summaries
-        us_total_dem   = sum(geo_demand[g] for g in US_GEOS)
+        us_total_dem   = sum(geo_demand[g] for g in US_GEOS   if geo_demand[g] > 0)
         us_total_stk   = sum(geo_stock[g]  for g in US_GEOS)
-        intl_total_dem = sum(geo_demand[g] for g in INTL_GEOS)
+        intl_total_dem = sum(geo_demand[g] for g in INTL_GEOS if geo_demand[g] > 0)
         intl_total_stk = sum(geo_stock[g]  for g in INTL_GEOS)
 
         # Destinations: per-GEO breakdown
