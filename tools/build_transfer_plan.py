@@ -116,131 +116,187 @@ def get_supplier_stock(data):
     }
 
 
-# ── STEP 1: Direct print run calculation ─────────────────────────────────────
+# ── STEP 1: Per-GEO print run calculation ────────────────────────────────────
 
 def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run_date):
     """
-    For each SKU determine exactly how many new units need to be produced.
+    Analyse each GEO independently (US_POOL, Amazon_US_FBA, CA, UK, EU, AU).
 
-    Logic:
-      US region (WH + FBA + CA) is isolated from UK.
-      Intl (UK/EU/AU) shares freely.
-      Supplier stock covers US gap first, then intl gap.
-      Remaining shortfall = new print run.
+    Step A: Apply inter-GEO transfers (surplus GEO → deficit GEO, routing rules).
+    Step B: Apply available supplier stock to remaining deficits (US side first).
+    Step C: Any remaining deficit = new print run.
+
+    Transfer routing:
+      US_POOL surplus → Amazon_US_FBA → CA
+      UK surplus     → AU → EU
+      EU surplus     → AU → UK
+      UK → US and EU/AU → US are both BLOCKED
     """
     stk          = get_starting_stock(data)
     supplier_stk = get_supplier_stock(data)
 
+    APR_FACTOR = 28.0 / 30.0   # Apr 2 → Apr 30 (28 days remaining)
+
     def sea(sid, m): return float(sea_raw.get(sid, {}).get(MONTH_ABBR[m-1], 1.0))
-    def v90ch(sid, ch): return vel_raw.get(sid, {}).get(ch, {}).get('v90', 0.0)
 
-    def vel_demand(sid, ch, m):
-        return v90ch(sid, ch) * sea(sid, m) * calendar.monthrange(2026, m)[1]
+    def v90(sid, wh):
+        v = vel_raw.get(sid, {}).get(wh, {}).get('v90', 0.0)
+        if v == 0 and wh in US_WH:
+            return vel_raw.get(sid, {}).get('US', {}).get('v90', 0.0) / len(US_WH)
+        return v
 
-    def channel_demand(sid, ch, m):
-        # Use 2025 actuals mapped back to sales channel
-        a = 0.0
-        # actuals are stored by physical WH; for channel, sum the relevant physical WHs
-        phys = SALES_WH_MAP.get(ch, [ch])
-        for pwh in phys:
-            a += actuals.get(sid, {}).get(pwh, {}).get(m, 0.0) * len(phys)
-        # Divide back out (actuals were split evenly)
-        a = a / len(phys) if phys else 0
-        return a if a > 0 else vel_demand(sid, ch, m)
+    def vel_demand(sid, wh, m):
+        return v90(sid, wh) * sea(sid, m) * calendar.monthrange(2026, m)[1]
+
+    def actual_dem(sid, wh, m):
+        a = actuals.get(sid, {}).get(wh, {}).get(m, 0.0)
+        return a if a > 0 else vel_demand(sid, wh, m)
+
+    GEO_WHS = {
+        'US_POOL':       US_WH,
+        'Amazon_US_FBA': ['Amazon_US_FBA'],
+        'CA':            ['CA'],
+        'Amazon_CA_FBA': ['Amazon_CA_FBA'],
+        'UK':            ['UK'],
+        'EU':            ['EU'],
+        'AU':            ['AU'],
+    }
+    ALL_GEOS   = list(GEO_WHS.keys())
+    US_GEOS    = ['US_POOL', 'Amazon_US_FBA', 'CA', 'Amazon_CA_FBA']
+    INTL_GEOS  = ['UK', 'EU', 'AU']
 
     print_runs      = []
     supplier_orders = []
 
     for sid in sku_list:
-        name          = sku_names.get(sid, sid)
-        sup           = supplier_stk.get(sid, {})
-        china_avail   = int(sup.get('china', 0))
-        canada_avail  = int(sup.get('canada', 0))
+        name  = sku_names.get(sid, sid)
+        sup   = supplier_stk.get(sid, {})
+        china_avail  = int(sup.get('china', 0))
+        canada_avail = int(sup.get('canada', 0))
         total_supplier = china_avail + canada_avail
 
-        # Total demand Apr-Dec per channel
-        us_dem   = sum(channel_demand(sid, 'US',            m) for m in range(4, 13))
-        fba_dem  = sum(channel_demand(sid, 'Amazon_US_FBA', m) for m in range(4, 13))
-        ca_dem   = sum(channel_demand(sid, 'CA',            m) for m in range(4, 13))
-        uk_dem   = sum(channel_demand(sid, 'UK',            m) for m in range(4, 13))
-        eu_dem   = sum(channel_demand(sid, 'EU',            m) for m in range(4, 13))
-        au_dem   = sum(channel_demand(sid, 'AU',            m) for m in range(4, 13))
+        # ── Per-GEO stock and demand (Apr 2 – Dec 31) ──────────────────────
+        geo_stock  = {}
+        geo_demand = {}
+        for geo, whs in GEO_WHS.items():
+            stock = sum(stk.get(sid, {}).get(w, 0) for w in whs)
+            if geo == 'US_POOL':
+                dem = sum(actual_dem(sid, w, 4) for w in whs) * APR_FACTOR
+                for m in range(5, 13):
+                    dem += sum(actual_dem(sid, w, m) for w in whs)
+            else:
+                dem = actual_dem(sid, whs[0], 4) * APR_FACTOR
+                for m in range(5, 13):
+                    dem += actual_dem(sid, whs[0], m)
+            geo_stock[geo]  = stock
+            geo_demand[geo] = dem
 
-        # Stock pools
-        us_stk   = (sum(stk.get(sid, {}).get(w, 0) for w in US_WH)
-                    + stk.get(sid, {}).get('Amazon_US_FBA', 0)
-                    + stk.get(sid, {}).get('CA', 0)
-                    + stk.get(sid, {}).get('Amazon_CA_FBA', 0))
-        intl_stk = (stk.get(sid, {}).get('UK', 0)
-                    + stk.get(sid, {}).get('EU', 0)
-                    + stk.get(sid, {}).get('AU', 0))
+        # gap > 0 = surplus, gap < 0 = deficit
+        geo_gap = {geo: geo_stock[geo] - geo_demand[geo] for geo in ALL_GEOS}
 
-        us_total_dem   = us_dem + fba_dem + ca_dem
-        intl_total_dem = uk_dem + eu_dem + au_dem
+        # ── Step A: Transfers (respect 25 % source buffer) ─────────────────
+        transfer_log = []
 
-        # Gap before supplier
-        us_gap_raw   = max(0.0, us_total_dem - us_stk)
-        intl_gap_raw = max(0.0, intl_total_dem - intl_stk)
+        def do_transfer(src, dst):
+            surplus = geo_gap.get(src, 0)
+            deficit = -geo_gap.get(dst, 0)
+            if surplus <= 0 or deficit <= 0:
+                return
+            usable = min(surplus, geo_stock[src] * 0.75)
+            moved  = min(usable, deficit)
+            if moved <= 0:
+                return
+            geo_gap[src] -= moved
+            geo_gap[dst] += moved
+            transfer_log.append((src, dst, int(moved)))
 
-        # Supplier covers US first, then intl
-        supplier_to_us    = min(total_supplier, us_gap_raw)
-        us_gap_final      = us_gap_raw - supplier_to_us
-        supplier_to_intl  = min(total_supplier - supplier_to_us, intl_gap_raw)
-        intl_gap_final    = intl_gap_raw - supplier_to_intl
+        # US internal
+        do_transfer('US_POOL', 'Amazon_US_FBA')
+        do_transfer('US_POOL', 'CA')
+        # Intl: UK and EU share toward AU first, then each other
+        do_transfer('UK', 'AU')
+        do_transfer('EU', 'AU')
+        do_transfer('UK', 'EU')
+        do_transfer('EU', 'UK')
 
-        us_gap_final   = int(round(us_gap_final))
-        intl_gap_final = int(round(intl_gap_final))
-        total_gap      = us_gap_final + intl_gap_final
+        # ── Step B: Supplier covers remaining deficits (US first) ──────────
+        remaining_sup = total_supplier
+        sup_used_by   = {}   # geo → units from supplier
 
-        # Where does the print run stock go?
+        for geo in ['Amazon_US_FBA', 'CA', 'US_POOL',   # US side first
+                    'AU', 'EU', 'UK']:                    # then intl
+            if remaining_sup <= 0:
+                break
+            deficit = max(0.0, -geo_gap[geo])
+            if deficit <= 0:
+                continue
+            give = min(remaining_sup, deficit)
+            geo_gap[geo]   += give
+            remaining_sup  -= give
+            sup_used_by[geo] = int(give)
+
+        # ── Step C: Remaining deficit = print run ──────────────────────────
+        us_print   = sum(max(0, -geo_gap[g]) for g in US_GEOS)
+        intl_print = sum(max(0, -geo_gap[g]) for g in INTL_GEOS)
+        total_print = int(round(us_print + intl_print))
+        supplier_used = total_supplier - remaining_sup
+
+        # Summaries for notes
+        us_total_dem  = sum(geo_demand[g] for g in US_GEOS)
+        us_total_stk  = sum(geo_stock[g]  for g in US_GEOS)
+        intl_total_dem = sum(geo_demand[g] for g in INTL_GEOS)
+        intl_total_stk = sum(geo_stock[g]  for g in INTL_GEOS)
+
+        # Destinations string
         dest_parts = []
-        if us_gap_final   > 0: dest_parts.append(f'US warehouses + FBA + CA: {us_gap_final:,}')
-        if intl_gap_final > 0: dest_parts.append(f'EU / AU: {intl_gap_final:,}')
+        if us_print   > 0: dest_parts.append(f'US / FBA / CA: {int(us_print):,}')
+        if intl_print > 0: dest_parts.append(f'EU / AU: {int(intl_print):,}')
         dest_str = ' | '.join(dest_parts) if dest_parts else ''
 
+        # Why explanation
         why = []
-        if us_gap_raw > 0:
+        if us_print > 0:
+            uk_stk = int(stk.get(sid, {}).get('UK', 0))
             why.append(
-                f'US region needs {int(us_total_dem):,} units Apr-Dec (2025 pace) '
-                f'but only has {int(us_stk):,} in stock. '
-                f'UK\'s {int(stk.get(sid,{}).get("UK",0)):,} units cannot transfer to the US. '
-                + (f'Canada supplier covers {int(supplier_to_us):,} of the gap.' if supplier_to_us > 0 else
-                   f'No supplier stock available.')
+                f'US region (warehouses + FBA + CA) needs {int(us_total_dem):,} units '
+                f'Apr 2–Dec 31 but only has {int(us_total_stk):,} in stock. '
+                f"UK's {uk_stk:,} units cannot transfer to the US. "
+                + (f'Supplier covers {supplier_used:,} of the gap.'
+                   if supplier_used > 0 else 'No supplier stock available.')
             )
-        if intl_gap_raw > 0:
+            if transfer_log:
+                for src, dst, qty in transfer_log:
+                    if dst in US_GEOS:
+                        why.append(f'{src} → {dst}: {qty:,} units transfer planned.')
+        if intl_print > 0:
             why.append(
-                f'Intl region (UK+EU+AU) needs {int(intl_total_dem):,} units Apr-Dec '
-                f'but only has {int(intl_stk):,} in stock. '
-                + (f'Remaining supplier stock covers {int(supplier_to_intl):,} of the gap.' if supplier_to_intl > 0 else '')
+                f'Intl region (UK+EU+AU) needs {int(intl_total_dem):,} units '
+                f'Apr 2–Dec 31 but only has {int(intl_total_stk):,} in stock. '
+                f'After all UK/EU transfers, still short {int(intl_print):,} units.'
             )
 
-        # Record supplier orders for stock that EXISTS and just needs to be ordered
-        # (only when supplier actually covers part of a gap)
-        if supplier_to_us > 0 and us_gap_raw > 0:
+        # Supplier orders (existing stock — just needs to be dispatched)
+        if supplier_used > 0:
+            dest_sup = []
+            for geo, qty in sup_used_by.items():
+                dest_sup.append(f'{geo}: {qty:,}')
             supplier_orders.append({
                 'sku_id': sid, 'sku_name': name, 'source': 'China_Supplier',
-                'units_needed': int(supplier_to_us), 'supplier_stock': china_avail + canada_avail,
-                'covered': True, 'order_by': '2026-08-02',
-                'type': 'Supplier Order', 'run_date': run_date,
-                'destinations': 'US warehouses + FBA + CA',
+                'units_needed': int(supplier_used),
+                'supplier_stock': total_supplier,
+                'covered': True,
+                'order_by': '2026-08-02',
+                'type': 'Supplier Order',
+                'run_date': run_date,
+                'destinations': ' | '.join(dest_sup),
                 'why': why,
-                'notes': f'Existing stock covers part of US gap — order now.',
-            })
-        if supplier_to_intl > 0 and intl_gap_raw > 0:
-            supplier_orders.append({
-                'sku_id': sid, 'sku_name': name, 'source': 'China_Supplier',
-                'units_needed': int(supplier_to_intl), 'supplier_stock': china_avail + canada_avail,
-                'covered': True, 'order_by': '2026-08-02',
-                'type': 'Supplier Order', 'run_date': run_date,
-                'destinations': 'EU / AU',
-                'why': why,
-                'notes': f'Existing stock covers part of intl gap — order now.',
+                'notes': 'Existing supplier stock — dispatch now to cover deficits.',
             })
 
-        if total_gap > 0:
+        if total_print > 0:
             print_runs.append({
                 'sku_id': sid, 'sku_name': name, 'source': 'China_Supplier',
-                'units_needed': total_gap,
+                'units_needed': total_print,
                 'supplier_stock': china_avail,
                 'order_by': '2026-08-02',
                 'type': 'Print Run',
@@ -248,18 +304,17 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
                 'destinations': dest_str,
                 'why': why,
                 'notes': (
-                    f'Total demand Apr-Dec: {int(us_total_dem+intl_total_dem):,} units globally. '
-                    f'Available stock: US {int(us_stk):,} + Intl {int(intl_stk):,} + Supplier {total_supplier:,}. '
-                    f'Short {total_gap:,} units. '
-                    f'Order by Aug 2 → ~6 weeks production → arrives Sep → distribute by Oct 1 for BFCM.'
+                    f'Total demand Apr2–Dec: US {int(us_total_dem):,} + Intl {int(intl_total_dem):,}. '
+                    f'Stock: US {int(us_total_stk):,} + Intl {int(intl_total_stk):,} + Supplier {total_supplier:,}. '
+                    f'Gap after all transfers + supplier: {total_print:,} units. '
+                    f'Order by Aug 2 → ~6 wks production → arrives Sep → ship by Oct 1 for BFCM.'
                 ),
             })
 
-        # Debug print
-        surplus_us   = int(us_stk   - us_total_dem)
-        surplus_intl = int(intl_stk - intl_total_dem)
-        status = f'PRINT RUN: {total_gap:,} units' if total_gap > 0 else 'OK - covered'
-        print(f'  {name}: US gap {surplus_us:+,} | Intl gap {surplus_intl:+,} | '
+        # Debug
+        status = f'PRINT RUN: {total_print:,} units' if total_print > 0 else 'OK - covered'
+        print(f'  {name}: US gap {int(us_total_stk - us_total_dem):+,} | '
+              f'Intl gap {int(intl_total_stk - intl_total_dem):+,} | '
               f'Supplier {total_supplier:,} | {status}')
 
     return print_runs, supplier_orders
