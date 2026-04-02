@@ -193,13 +193,11 @@ def run_simulation():
             # Transfer from US warehouses first, then China
             return [(w, 14, False) for w in us_sorted] + [('China_Supplier', 60, True)]
         if wh == 'EU':
-            # UK cannot send to EU; EU sources from China only
-            return [('China_Supplier', 75, True)]
+            return [('UK', 21, False), ('China_Supplier', 75, True)]
         if wh == 'UK':
             return [('EU', 21, False), ('China_Supplier', 75, True)]
         if wh == 'AU':
-            # UK can transfer to AU; also China
-            return [('UK', 60, False), ('China_Supplier', 60, True)]
+            return [('UK', 60, False), ('EU', 60, False), ('China_Supplier', 60, True)]
         return [('China_Supplier', 60, True)]
 
     QUARTER_OF    = {4:'Q2',5:'Q2',6:'Q2', 7:'Q3',8:'Q3',9:'Q3', 10:'Q4',11:'Q4',12:'Q4'}
