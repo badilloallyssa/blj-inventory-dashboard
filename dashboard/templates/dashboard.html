@@ -372,6 +372,9 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
   <!-- Print run banner -->
   <div id="tp-print-banner"></div>
 
+  <!-- Supplier orders -->
+  <div id="tp-supplier-orders" style="margin-bottom:20px"></div>
+
   <!-- Quarter summary chips -->
   <div class="grid-3 mb" id="tp-quarter-counts" style="margin-top:16px"></div>
 
@@ -903,18 +906,56 @@ function yaRowHtml(a, statusCls, statusBadgeCls){
 }
 
 // ── Transfer & Print Plan ─────────────────────────────────────────────────────
+function renderSupplierOrders(orders){
+  if(!orders || !orders.length) return '';
+  const rows = orders.map(o => {
+    const covered = o.covered;
+    const statusBadge = covered
+      ? '<span class="badge b-tr">Covered</span>'
+      : '<span class="badge b-po">Needs Action</span>';
+    return `<tr>
+      <td style="font-weight:600">${o.sku_name||''}</td>
+      <td>${o.source||''}</td>
+      <td style="text-align:right;font-weight:700">${fmt(o.units_needed)}</td>
+      <td style="text-align:right">${fmt(o.supplier_stock)}</td>
+      <td>${o.order_by||''}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="card">
+    <div class="card-hdr">
+      <h2 style="font-size:13px">Supplier Orders</h2>
+      <span class="cnt">${orders.length} order${orders.length>1?'s':''}</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr>
+          <th>SKU</th>
+          <th>Source</th>
+          <th style="text-align:right">Units to Order</th>
+          <th style="text-align:right">Supplier Stock</th>
+          <th>Order By</th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
 async function loadTransferPlan(){
   const r = await fetch('/api/transfer-plan');
   const d = await r.json();
 
   // Print run banner
   const banner = document.getElementById('tp-print-banner');
-  if(d.print_runs_needed && d.print_runs && d.print_runs.length){
+  if(d.print_runs && d.print_runs.length){
     banner.innerHTML = `<div class="print-banner">
       <div class="print-icon">🖨️</div>
       <div class="print-body">
         <h3>${d.print_runs.length} Print Run${d.print_runs.length>1?'s':''} Required</h3>
         <p>Global supply is insufficient. Place production orders by the deadlines below.</p>
+        ${d.print_runs.map(p=>`<div style="margin-top:8px;font-size:13px"><strong>${p.sku_name}</strong> — ${fmt(p.units_needed)} units from ${p.source} · order by ${p.order_by} · ${p.notes}</div>`).join('')}
       </div>
     </div>`;
   } else {
@@ -925,6 +966,11 @@ async function loadTransferPlan(){
         <p>Global inventory covers all demand through Q4 including BFCM. All actions below are warehouse-to-warehouse transfers or FBA restocks.</p>
       </div>
     </div>`;
+  }
+
+  // Supplier orders
+  if(d.supplier_orders && d.supplier_orders.length){
+    document.getElementById('tp-supplier-orders').innerHTML = renderSupplierOrders(d.supplier_orders);
   }
 
   // Quarter count chips
