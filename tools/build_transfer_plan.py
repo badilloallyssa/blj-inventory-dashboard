@@ -120,11 +120,15 @@ def get_supplier_stock(data):
 
 def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run_date):
     """
-    Analyse each GEO independently (US_POOL, Amazon_US_FBA, CA, UK, EU, AU).
+    Analyse each GEO independently (SLI/HBG/SAV/KCM/FBA/CA/UK/EU/AU).
 
     Demand target = Apr 2–Dec 31 sales + Jan+Feb 2027 carry-over stock
     (using 2025 Jan/Feb actuals as the carry-over proxy so no GEO stocks out
     at the start of 2027).
+
+    BLOCKED_INTL_TRANSFERS: per-SKU routes that are intentionally skipped.
+    Stock at the source GEO is kept for its own carry-over instead.
+    Update this dict whenever a routing decision changes.
 
     Step A: Apply inter-GEO transfers (surplus GEO → deficit GEO, routing rules).
     Step B: Apply available supplier stock to remaining deficits (US side first).
@@ -228,11 +232,15 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
         for dst in ['Amazon_US_FBA', 'CA']:
             for src in sorted(US_WH_GEOS, key=lambda g: geo_gap.get(g, 0), reverse=True):
                 do_transfer(src, dst)
-        # Intl
-        do_transfer('UK', 'AU')
-        do_transfer('EU', 'AU')
-        do_transfer('UK', 'EU')
-        do_transfer('EU', 'UK')
+        # Intl — skip routes blocked for this SKU
+        # Know Me Cards: UK/EU stock kept for their own Jan/Feb buffer; AU covered by print run
+        BLOCKED = {
+            'EIDJB5002': [('UK', 'AU'), ('EU', 'AU')],
+        }
+        blocked_routes = BLOCKED.get(sid, [])
+        for route in [('UK', 'AU'), ('EU', 'AU'), ('UK', 'EU'), ('EU', 'UK')]:
+            if route not in blocked_routes:
+                do_transfer(*route)
 
         # ── Step B: Supplier covers remaining deficits (US first) ──────────
         remaining_sup = total_supplier
