@@ -122,15 +122,19 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
     """
     Analyse each GEO independently (US_POOL, Amazon_US_FBA, CA, UK, EU, AU).
 
+    Demand target = Apr 2–Dec 31 sales + Jan+Feb 2027 carry-over stock
+    (using 2025 Jan/Feb actuals as the carry-over proxy so no GEO stocks out
+    at the start of 2027).
+
     Step A: Apply inter-GEO transfers (surplus GEO → deficit GEO, routing rules).
     Step B: Apply available supplier stock to remaining deficits (US side first).
-    Step C: Any remaining deficit = new print run.
+    Step C: Per-GEO breakdown of print run destinations.
 
     Transfer routing:
       US_POOL surplus → Amazon_US_FBA → CA
       UK surplus     → AU → EU
       EU surplus     → AU → UK
-      UK → US and EU/AU → US are both BLOCKED
+      UK/EU/AU → US is BLOCKED
     """
     stk          = get_starting_stock(data)
     supplier_stk = get_supplier_stock(data)
@@ -161,9 +165,9 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
         'EU':            ['EU'],
         'AU':            ['AU'],
     }
-    ALL_GEOS   = list(GEO_WHS.keys())
-    US_GEOS    = ['US_POOL', 'Amazon_US_FBA', 'CA', 'Amazon_CA_FBA']
-    INTL_GEOS  = ['UK', 'EU', 'AU']
+    ALL_GEOS  = list(GEO_WHS.keys())
+    US_GEOS   = ['US_POOL', 'Amazon_US_FBA', 'CA', 'Amazon_CA_FBA']
+    INTL_GEOS = ['UK', 'EU', 'AU']
 
     print_runs      = []
     supplier_orders = []
@@ -175,23 +179,31 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
         canada_avail = int(sup.get('canada', 0))
         total_supplier = china_avail + canada_avail
 
-        # ── Per-GEO stock and demand (Apr 2 – Dec 31) ──────────────────────
-        geo_stock  = {}
-        geo_demand = {}
+        # ── Per-GEO stock and demand ────────────────────────────────────────
+        # demand = Apr 2–Dec 31  +  Jan+Feb 2027 carry-over (2025 actuals)
+        geo_stock    = {}
+        geo_dem_sell = {}   # Apr–Dec selling demand
+        geo_dem_co   = {}   # Jan+Feb carry-over target
+        geo_demand   = {}   # total = sell + carry-over
+
         for geo, whs in GEO_WHS.items():
             stock = sum(stk.get(sid, {}).get(w, 0) for w in whs)
             if geo == 'US_POOL':
-                dem = sum(actual_dem(sid, w, 4) for w in whs) * APR_FACTOR
+                sell = sum(actual_dem(sid, w, 4) for w in whs) * APR_FACTOR
                 for m in range(5, 13):
-                    dem += sum(actual_dem(sid, w, m) for w in whs)
+                    sell += sum(actual_dem(sid, w, m) for w in whs)
+                co = sum(actual_dem(sid, w, 1) + actual_dem(sid, w, 2) for w in whs)
             else:
-                dem = actual_dem(sid, whs[0], 4) * APR_FACTOR
+                sell = actual_dem(sid, whs[0], 4) * APR_FACTOR
                 for m in range(5, 13):
-                    dem += actual_dem(sid, whs[0], m)
-            geo_stock[geo]  = stock
-            geo_demand[geo] = dem
+                    sell += actual_dem(sid, whs[0], m)
+                co = actual_dem(sid, whs[0], 1) + actual_dem(sid, whs[0], 2)
+            geo_stock[geo]    = stock
+            geo_dem_sell[geo] = sell
+            geo_dem_co[geo]   = co
+            geo_demand[geo]   = sell + co
 
-        # gap > 0 = surplus, gap < 0 = deficit
+        # gap > 0 = surplus, gap < 0 = deficit (must have enough for sell+carry-over)
         geo_gap = {geo: geo_stock[geo] - geo_demand[geo] for geo in ALL_GEOS}
 
         # ── Step A: Transfers (respect 25 % source buffer) ─────────────────
@@ -210,10 +222,8 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
             geo_gap[dst] += moved
             transfer_log.append((src, dst, int(moved)))
 
-        # US internal
         do_transfer('US_POOL', 'Amazon_US_FBA')
         do_transfer('US_POOL', 'CA')
-        # Intl: UK and EU share toward AU first, then each other
         do_transfer('UK', 'AU')
         do_transfer('EU', 'AU')
         do_transfer('UK', 'EU')
@@ -221,76 +231,72 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
 
         # ── Step B: Supplier covers remaining deficits (US first) ──────────
         remaining_sup = total_supplier
-        sup_used_by   = {}   # geo → units from supplier
+        sup_used_by   = {}
 
-        for geo in ['Amazon_US_FBA', 'CA', 'US_POOL',   # US side first
-                    'AU', 'EU', 'UK']:                    # then intl
+        for geo in ['Amazon_US_FBA', 'CA', 'US_POOL', 'AU', 'EU', 'UK']:
             if remaining_sup <= 0:
                 break
             deficit = max(0.0, -geo_gap[geo])
             if deficit <= 0:
                 continue
             give = min(remaining_sup, deficit)
-            geo_gap[geo]   += give
-            remaining_sup  -= give
+            geo_gap[geo]    += give
+            remaining_sup   -= give
             sup_used_by[geo] = int(give)
 
-        # ── Step C: Remaining deficit = print run ──────────────────────────
-        us_print   = sum(max(0, -geo_gap[g]) for g in US_GEOS)
-        intl_print = sum(max(0, -geo_gap[g]) for g in INTL_GEOS)
-        total_print = int(round(us_print + intl_print))
+        # ── Step C: Per-GEO print run destinations ─────────────────────────
+        geo_print = {geo: int(round(max(0, -geo_gap[geo]))) for geo in ALL_GEOS}
+        total_print   = sum(geo_print.values())
         supplier_used = total_supplier - remaining_sup
 
-        # Summaries for notes
-        us_total_dem  = sum(geo_demand[g] for g in US_GEOS)
-        us_total_stk  = sum(geo_stock[g]  for g in US_GEOS)
+        # Summaries
+        us_total_dem   = sum(geo_demand[g] for g in US_GEOS)
+        us_total_stk   = sum(geo_stock[g]  for g in US_GEOS)
         intl_total_dem = sum(geo_demand[g] for g in INTL_GEOS)
         intl_total_stk = sum(geo_stock[g]  for g in INTL_GEOS)
 
-        # Destinations string
+        # Destinations: per-GEO breakdown
         dest_parts = []
-        if us_print   > 0: dest_parts.append(f'US / FBA / CA: {int(us_print):,}')
-        if intl_print > 0: dest_parts.append(f'EU / AU: {int(intl_print):,}')
+        for geo in ALL_GEOS:
+            if geo_print[geo] > 0:
+                dest_parts.append(f'{geo}: {geo_print[geo]:,}')
         dest_str = ' | '.join(dest_parts) if dest_parts else ''
 
         # Why explanation
         why = []
-        if us_print > 0:
-            uk_stk = int(stk.get(sid, {}).get('UK', 0))
+        uk_stk = int(stk.get(sid, {}).get('UK', 0))
+        for geo in ALL_GEOS:
+            shortage = geo_print[geo]
+            if shortage <= 0:
+                continue
+            sell   = int(geo_dem_sell[geo])
+            co_tgt = int(geo_dem_co[geo])
+            s_stk  = int(geo_stock[geo])
+            xf_in  = sum(qty for src, dst, qty in transfer_log if dst == geo)
+            s_sup  = sup_used_by.get(geo, 0)
             why.append(
-                f'US region (warehouses + FBA + CA) needs {int(us_total_dem):,} units '
-                f'Apr 2–Dec 31 but only has {int(us_total_stk):,} in stock. '
-                f"UK's {uk_stk:,} units cannot transfer to the US. "
-                + (f'Supplier covers {supplier_used:,} of the gap.'
-                   if supplier_used > 0 else 'No supplier stock available.')
-            )
-            if transfer_log:
-                for src, dst, qty in transfer_log:
-                    if dst in US_GEOS:
-                        why.append(f'{src} → {dst}: {qty:,} units transfer planned.')
-        if intl_print > 0:
-            why.append(
-                f'Intl region (UK+EU+AU) needs {int(intl_total_dem):,} units '
-                f'Apr 2–Dec 31 but only has {int(intl_total_stk):,} in stock. '
-                f'After all UK/EU transfers, still short {int(intl_print):,} units.'
+                f'{geo}: needs {sell:,} units Apr–Dec + {co_tgt:,} carry-over (Jan/Feb 2027) '
+                f'= {sell+co_tgt:,} total. Has {s_stk:,} stock'
+                + (f' + {xf_in:,} transfer in' if xf_in else '')
+                + (f' + {s_sup:,} supplier' if s_sup else '')
+                + f'. Short {shortage:,} → print {shortage:,} units to {geo}.'
+                + (f" (UK's {uk_stk:,} cannot go to US)" if geo in US_GEOS and uk_stk > 0 else '')
             )
 
-        # Supplier orders (existing stock — just needs to be dispatched)
+        # Supplier orders
         if supplier_used > 0:
-            dest_sup = []
-            for geo, qty in sup_used_by.items():
-                dest_sup.append(f'{geo}: {qty:,}')
+            dest_sup = [f'{g}: {q:,}' for g, q in sup_used_by.items()]
             supplier_orders.append({
                 'sku_id': sid, 'sku_name': name, 'source': 'China_Supplier',
                 'units_needed': int(supplier_used),
                 'supplier_stock': total_supplier,
                 'covered': True,
-                'order_by': '2026-08-02',
+                'order_by': '2026-09-06',
                 'type': 'Supplier Order',
                 'run_date': run_date,
                 'destinations': ' | '.join(dest_sup),
                 'why': why,
-                'notes': 'Existing supplier stock — dispatch now to cover deficits.',
+                'notes': 'Existing supplier stock — dispatch now to cover GEO deficits.',
             })
 
         if total_print > 0:
@@ -298,16 +304,15 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
                 'sku_id': sid, 'sku_name': name, 'source': 'China_Supplier',
                 'units_needed': total_print,
                 'supplier_stock': china_avail,
-                'order_by': '2026-08-02',
+                'order_by': '2026-09-06',
                 'type': 'Print Run',
                 'run_date': run_date,
                 'destinations': dest_str,
                 'why': why,
                 'notes': (
-                    f'Total demand Apr2–Dec: US {int(us_total_dem):,} + Intl {int(intl_total_dem):,}. '
-                    f'Stock: US {int(us_total_stk):,} + Intl {int(intl_total_stk):,} + Supplier {total_supplier:,}. '
-                    f'Gap after all transfers + supplier: {total_print:,} units. '
-                    f'Order by Aug 2 → ~6 wks production → arrives Sep → ship by Oct 1 for BFCM.'
+                    f'Covers Apr 2–Dec 31 selling demand + Jan/Feb 2027 carry-over so no GEO stocks out. '
+                    f'Gap after all transfers + {total_supplier:,} supplier units: {total_print:,}. '
+                    f'Order by Sep 6 (AU lead time) → arrives Nov → distribute before BFCM.'
                 ),
             })
 
