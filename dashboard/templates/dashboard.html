@@ -976,16 +976,17 @@ function renderSummary(d){
   const t        = d.totals || {};
   const skuNames = d.sku_names || {};
 
-  // ── Collect all transfers, grouped by SKU ────────────────────
-  // Build: { sku_name: { Q2: {src: qty}, Q3: {}, Q4: {} } }
-  const bySkuQ = {};
+  // ── Collect all transfers grouped by SKU → FROM→TO → quarter ─
+  // bySkuRoute[sku][from→to][Q] = total units
+  const bySkuRoute = {};
   ['Q2','Q3','Q4'].forEach(q => {
     const rows = (d[q] && d[q].all_rows) ? d[q].all_rows : [];
     rows.forEach(r => {
-      const sku = r.sku || '';
-      if(!bySkuQ[sku]) bySkuQ[sku] = {Q2:{},Q3:{},Q4:{}};
-      const src = r.src || '';
-      bySkuQ[sku][q][src] = (bySkuQ[sku][q][src] || 0) + (r.qty || 0);
+      const sku   = r.sku || '';
+      const route = `${r.src||'?'} → ${r.wh||'?'}`;
+      if(!bySkuRoute[sku]) bySkuRoute[sku] = {};
+      if(!bySkuRoute[sku][route]) bySkuRoute[sku][route] = {Q2:0,Q3:0,Q4:0};
+      bySkuRoute[sku][route][q] = (bySkuRoute[sku][route][q]||0) + (r.qty||0);
     });
   });
 
@@ -1076,41 +1077,68 @@ function renderSummary(d){
       </div>`;
   }
 
-  // ── Transfer summary by SKU ──────────────────────────────────
-  const skuKeys = Object.keys(bySkuQ).sort();
+  // ── Transfer summary by SKU with FROM→TO ─────────────────────
+  const skuKeys = Object.keys(bySkuRoute).sort();
   const Q_COLOR = {Q2:'#2563eb',Q3:'#7c3aed',Q4:'#dc2626'};
   let transferHtml = '';
   if(skuKeys.length){
-    const skuRows = skuKeys.map(sku => {
-      const qCells = ['Q2','Q3','Q4'].map(q => {
-        const srcMap = bySkuQ[sku][q];
-        const srcs   = Object.keys(srcMap);
-        if(!srcs.length) return `<td style="text-align:center;color:#d1d5db;font-size:12px">—</td>`;
-        const total = srcs.reduce((s,k) => s + srcMap[k], 0);
-        const tip   = srcs.map(s => `${s}: ${fmt(srcMap[s])}`).join(', ');
-        return `<td style="text-align:center">
-          <span style="font-weight:700;font-size:13px;color:${Q_COLOR[q]}">${fmt(total)}</span>
-          <div style="font-size:10px;color:#9ca3af;margin-top:1px">${tip}</div>
-        </td>`;
+    const skuBlocks = skuKeys.map(sku => {
+      const routes     = Object.keys(bySkuRoute[sku]).sort();
+      const routeRows  = routes.map((route, i) => {
+        const data   = bySkuRoute[sku][route];
+        const qCells = ['Q2','Q3','Q4'].map(q => {
+          const v = data[q] || 0;
+          return v > 0
+            ? `<td style="text-align:right;font-weight:700;font-size:13px;color:${Q_COLOR[q]}">${fmt(v)}</td>`
+            : `<td style="text-align:right;color:#d1d5db;font-size:12px">—</td>`;
+        }).join('');
+        const rowBg = i % 2 === 0 ? '' : 'background:#f9fafb;';
+        return `<tr style="${rowBg}">
+          <td style="font-size:12px;font-weight:600;white-space:nowrap;padding:7px 8px">${route}</td>
+          ${qCells}
+        </tr>`;
       }).join('');
-      return `<tr><td style="font-weight:600;font-size:13px;padding:8px 0">${sku}</td>${qCells}</tr>`;
+
+      // Quarter totals for this SKU
+      const qTotals = ['Q2','Q3','Q4'].map(q => {
+        const total = routes.reduce((s,r) => s + (bySkuRoute[sku][r][q]||0), 0);
+        return total > 0
+          ? `<td style="text-align:right;font-weight:800;font-size:13px;border-top:2px solid #e5e7eb;color:${Q_COLOR[q]}">${fmt(total)}</td>`
+          : `<td style="text-align:right;border-top:2px solid #e5e7eb;color:#d1d5db">—</td>`;
+      }).join('');
+
+      return `
+        <div style="margin-bottom:20px">
+          <div style="font-weight:700;font-size:13px;color:#111827;margin-bottom:6px;padding-bottom:4px;border-bottom:2px solid #e5e7eb">${sku}</div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+              <thead>
+                <tr style="background:#f3f4f6">
+                  <th style="text-align:left;padding:6px 8px;font-size:11px;color:#6b7280;font-weight:600;white-space:nowrap">From → To</th>
+                  <th style="text-align:right;padding:6px 8px;font-size:11px;color:${Q_COLOR.Q2};font-weight:700">Q2 Apr–Jun</th>
+                  <th style="text-align:right;padding:6px 8px;font-size:11px;color:${Q_COLOR.Q3};font-weight:700">Q3 Jul–Sep</th>
+                  <th style="text-align:right;padding:6px 8px;font-size:11px;color:${Q_COLOR.Q4};font-weight:700">Q4 Oct–Dec</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${routeRows}
+                <tr>
+                  <td style="font-size:12px;font-weight:700;padding:7px 8px;border-top:2px solid #e5e7eb;color:#374151">Total</td>
+                  ${qTotals}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>`;
     }).join('');
+
     transferHtml = `
       <div class="card" style="margin-bottom:16px">
-        <div class="card-hdr"><h2 style="font-size:13px">Warehouse Transfers — Units to Move</h2>
-          <span class="cnt">${(t.Q2||0)+(t.Q3||0)+(t.Q4||0)} total actions</span></div>
-        <div style="padding:0 16px 8px;overflow-x:auto">
-          <table class="tbl">
-            <thead><tr>
-              <th>SKU</th>
-              <th style="text-align:center;color:${Q_COLOR.Q2}">Q2 Apr–Jun</th>
-              <th style="text-align:center;color:${Q_COLOR.Q3}">Q3 Jul–Sep</th>
-              <th style="text-align:center;color:${Q_COLOR.Q4}">Q4 Oct–Dec</th>
-            </tr></thead>
-            <tbody>${skuRows}</tbody>
-          </table>
-          <p style="font-size:11px;color:#9ca3af;margin:8px 0 4px">Numbers = total units to transfer that quarter. Source warehouses shown below each number. Full breakdown in the detail section below.</p>
+        <div class="card-hdr">
+          <h2 style="font-size:13px">Warehouse Transfers — From → To</h2>
+          <span class="cnt">${(t.Q2||0)+(t.Q3||0)+(t.Q4||0)} total actions</span>
         </div>
+        <div style="padding:12px 16px 4px">${skuBlocks}</div>
       </div>`;
   }
 
