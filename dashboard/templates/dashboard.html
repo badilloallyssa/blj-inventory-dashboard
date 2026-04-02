@@ -369,45 +369,58 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
 <!-- ═══ TRANSFER & PRINT PLAN ════════════════════════════════════════ -->
 <div id="page-transfer-plan" class="page">
 
-  <!-- Print run banner -->
-  <div id="tp-print-banner"></div>
+  <!-- ── SUMMARY CARD ──────────────────────────────────────────── -->
+  <div id="tp-summary"></div>
 
-  <!-- Supplier orders -->
-  <div id="tp-supplier-orders" style="margin-bottom:20px"></div>
+  <!-- ── DETAIL SECTIONS (collapsible) ────────────────────────── -->
+  <div style="margin-top:28px">
 
-  <!-- Quarter summary chips -->
-  <div class="grid-3 mb" id="tp-quarter-counts" style="margin-top:16px"></div>
+    <!-- Transfers by quarter -->
+    <details id="tp-detail-transfers" style="margin-bottom:16px">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:#374151;padding:12px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;list-style:none;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">📦</span> Full Transfer Plan by Quarter &amp; Warehouse
+        <span id="tp-transfer-counts" style="margin-left:auto;font-weight:400;font-size:12px;color:var(--muted)"></span>
+      </summary>
+      <div style="padding:16px 0">
+        <div class="grid-3 mb" id="tp-quarter-counts" style="margin-bottom:20px"></div>
+        <div id="tp-q2-section">
+          <div class="section-title" style="margin-top:0;font-size:13px;color:var(--blue)">Q2 — Apr / May / Jun <span style="font-weight:400;font-size:11px;color:var(--muted)">(velocity forecast)</span></div>
+          <div id="tp-q2"></div>
+        </div>
+        <div id="tp-q3-section" style="margin-top:20px">
+          <div class="section-title" style="font-size:13px;color:#7c3aed">Q3 — Jul / Aug / Sep <span style="font-weight:400;font-size:11px;color:var(--muted)">(2025 actuals)</span></div>
+          <div id="tp-q3"></div>
+        </div>
+        <div id="tp-q4-section" style="margin-top:20px">
+          <div class="section-title" style="font-size:13px;color:#dc2626">Q4 — Oct / Nov / Dec <span style="font-weight:400;font-size:11px;color:var(--muted)">(2025 actuals · BFCM)</span></div>
+          <div id="tp-q4"></div>
+        </div>
+      </div>
+    </details>
 
-  <!-- Q2 -->
-  <div id="tp-q2-section">
-    <div class="section-title" style="margin-top:0;font-size:14px;color:var(--blue)">Q2 — Apr / May / Jun</div>
-    <div id="tp-q2"></div>
-  </div>
+    <!-- Monthly forecast -->
+    <details style="margin-bottom:16px">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:#374151;padding:12px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;list-style:none;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">📅</span> Anticipated Monthly Sales — 2026
+        <span style="margin-left:auto;font-weight:400;font-size:12px;color:var(--muted)">units per SKU per region</span>
+      </summary>
+      <div style="padding:16px 0">
+        <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Q2 uses current velocity × seasonality. Q3/Q4 uses 2025 actual monthly sales. This is what the transfer plan is based on.</p>
+        <div id="tp-forecast"></div>
+      </div>
+    </details>
 
-  <!-- Q3 -->
-  <div id="tp-q3-section" style="margin-top:24px">
-    <div class="section-title" style="font-size:14px;color:#7c3aed">Q3 — Jul / Aug / Sep</div>
-    <div id="tp-q3"></div>
-  </div>
+    <!-- Why each action -->
+    <details style="margin-bottom:16px">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:#374151;padding:12px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;list-style:none;display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">🧠</span> Why Each Transfer Is Recommended
+        <span style="margin-left:auto;font-weight:400;font-size:12px;color:var(--muted)">reasoning behind every action</span>
+      </summary>
+      <div style="padding:16px 0">
+        <div id="tp-action-log"></div>
+      </div>
+    </details>
 
-  <!-- Q4 -->
-  <div id="tp-q4-section" style="margin-top:24px">
-    <div class="section-title" style="font-size:14px;color:#dc2626">Q4 — Oct / Nov / Dec &nbsp;<span style="font-weight:400;font-size:12px;color:var(--muted)">BFCM season</span></div>
-    <div id="tp-q4"></div>
-  </div>
-
-  <!-- Monthly Forecast -->
-  <div style="margin-top:36px;border-top:2px solid #e5e7eb;padding-top:24px">
-    <div class="section-title" style="font-size:15px;margin-bottom:4px">📅 Anticipated Monthly Sales — 2026</div>
-    <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Units expected to sell per SKU per region each month, based on 90-day velocity × 2024-2025 seasonality. This is what drives the transfer plan above.</p>
-    <div id="tp-forecast"></div>
-  </div>
-
-  <!-- Action Reasoning Log -->
-  <div style="margin-top:36px;border-top:2px solid #e5e7eb;padding-top:24px">
-    <div class="section-title" style="font-size:15px;margin-bottom:4px">🧠 Why Each Transfer Is Recommended</div>
-    <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Every transfer or order in the plan above is explained here — what triggered it, which warehouse is getting low, and where stock is coming from.</p>
-    <div id="tp-action-log"></div>
   </div>
 
 </div>
@@ -957,49 +970,152 @@ function renderSupplierOrders(orders){
   </div>`;
 }
 
+function renderSummary(d){
+  const prints   = d.print_runs    || [];
+  const orders   = d.supplier_orders || [];
+  const t        = d.totals || {};
+  const skuNames = d.sku_names || {};
+
+  // ── Collect all transfers, grouped by SKU ────────────────────
+  // Build: { sku_name: { Q2: {src: qty}, Q3: {}, Q4: {} } }
+  const bySkuQ = {};
+  ['Q2','Q3','Q4'].forEach(q => {
+    const rows = (d[q] && d[q].all_rows) ? d[q].all_rows : [];
+    rows.forEach(r => {
+      const sku = r.sku || '';
+      if(!bySkuQ[sku]) bySkuQ[sku] = {Q2:{},Q3:{},Q4:{}};
+      const src = r.src || '';
+      bySkuQ[sku][q][src] = (bySkuQ[sku][q][src] || 0) + (r.qty || 0);
+    });
+  });
+
+  // ── Print / order section ────────────────────────────────────
+  let printHtml = '';
+  if(prints.length){
+    const rows = prints.map(p => `
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid #fde8e8">
+        <div style="min-width:32px;height:32px;background:#fee2e2;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">🖨️</div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-weight:700;font-size:14px">${p.sku_name}</span>
+            <span style="background:#fee2e2;color:#dc2626;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px">NEW PRINT RUN</span>
+            <span style="margin-left:auto;font-weight:800;font-size:16px;color:#dc2626">${fmt(p.units_needed)} units</span>
+          </div>
+          <div style="font-size:12px;color:#6b7280;margin-top:3px">From ${p.source} · Order by <strong>${p.order_by}</strong> · Ships ~6 wks · In warehouses by Oct 1</div>
+        </div>
+      </div>`).join('');
+    printHtml = `
+      <div class="card" style="border-left:4px solid #dc2626;margin-bottom:16px">
+        <div class="card-hdr" style="background:#fef2f2">
+          <h2 style="font-size:13px;color:#dc2626">⚠️ Production Orders Required</h2>
+          <span class="cnt" style="background:#fee2e2;color:#dc2626">${prints.length} print run${prints.length>1?'s':''}</span>
+        </div>
+        <div style="padding:0 16px 4px">${rows}</div>
+      </div>`;
+  } else {
+    printHtml = `
+      <div class="card" style="border-left:4px solid #16a34a;margin-bottom:16px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:22px">✅</span>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:#15803d">No new print runs needed</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">All demand through Q4 BFCM is covered by existing stock + transfers.</div>
+        </div>
+      </div>`;
+  }
+
+  // ── Supplier orders section ──────────────────────────────────
+  let supplierHtml = '';
+  if(orders.length){
+    const rows = orders.map(o => `
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #fef3c7">
+        <div style="min-width:32px;height:32px;background:#fef9c3;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">📦</div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-weight:700;font-size:14px">${o.sku_name}</span>
+            <span style="background:#fef9c3;color:#b45309;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px">ORDER EXISTING STOCK</span>
+            <span style="margin-left:auto;font-weight:800;font-size:15px;color:#b45309">${fmt(o.units_needed)} units</span>
+          </div>
+          <div style="font-size:12px;color:#6b7280;margin-top:3px">${o.source} has ${fmt(o.supplier_stock)} in stock · Order by ${o.order_by}</div>
+        </div>
+      </div>`).join('');
+    supplierHtml = `
+      <div class="card" style="border-left:4px solid #d97706;margin-bottom:16px">
+        <div class="card-hdr" style="background:#fffbeb">
+          <h2 style="font-size:13px;color:#b45309">Supplier Stock — Place Orders Now</h2>
+          <span class="cnt" style="background:#fef9c3;color:#b45309">${orders.length} order${orders.length>1?'s':''}</span>
+        </div>
+        <div style="padding:0 16px 4px">${rows}</div>
+      </div>`;
+  }
+
+  // ── Transfer summary by SKU ──────────────────────────────────
+  const skuKeys = Object.keys(bySkuQ).sort();
+  const Q_COLOR = {Q2:'#2563eb',Q3:'#7c3aed',Q4:'#dc2626'};
+  let transferHtml = '';
+  if(skuKeys.length){
+    const skuRows = skuKeys.map(sku => {
+      const qCells = ['Q2','Q3','Q4'].map(q => {
+        const srcMap = bySkuQ[sku][q];
+        const srcs   = Object.keys(srcMap);
+        if(!srcs.length) return `<td style="text-align:center;color:#d1d5db;font-size:12px">—</td>`;
+        const total = srcs.reduce((s,k) => s + srcMap[k], 0);
+        const tip   = srcs.map(s => `${s}: ${fmt(srcMap[s])}`).join(', ');
+        return `<td style="text-align:center">
+          <span style="font-weight:700;font-size:13px;color:${Q_COLOR[q]}">${fmt(total)}</span>
+          <div style="font-size:10px;color:#9ca3af;margin-top:1px">${tip}</div>
+        </td>`;
+      }).join('');
+      return `<tr><td style="font-weight:600;font-size:13px;padding:8px 0">${sku}</td>${qCells}</tr>`;
+    }).join('');
+    transferHtml = `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-hdr"><h2 style="font-size:13px">Warehouse Transfers — Units to Move</h2>
+          <span class="cnt">${(t.Q2||0)+(t.Q3||0)+(t.Q4||0)} total actions</span></div>
+        <div style="padding:0 16px 8px;overflow-x:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th>SKU</th>
+              <th style="text-align:center;color:${Q_COLOR.Q2}">Q2 Apr–Jun</th>
+              <th style="text-align:center;color:${Q_COLOR.Q3}">Q3 Jul–Sep</th>
+              <th style="text-align:center;color:${Q_COLOR.Q4}">Q4 Oct–Dec</th>
+            </tr></thead>
+            <tbody>${skuRows}</tbody>
+          </table>
+          <p style="font-size:11px;color:#9ca3af;margin:8px 0 4px">Numbers = total units to transfer that quarter. Source warehouses shown below each number. Full breakdown in the detail section below.</p>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('tp-summary').innerHTML =
+    `<div style="font-size:11px;color:var(--muted);margin-bottom:12px">
+       Last updated: ${d.generated || '—'} · Forecast: ${d.forecast_basis || ''}
+     </div>` +
+    printHtml + supplierHtml + transferHtml;
+}
+
 async function loadTransferPlan(){
   const r = await fetch('/api/transfer-plan');
   const d = await r.json();
 
-  // Print run banner
-  const banner = document.getElementById('tp-print-banner');
-  if(d.print_runs && d.print_runs.length){
-    banner.innerHTML = `<div class="print-banner">
-      <div class="print-icon">🖨️</div>
-      <div class="print-body">
-        <h3>${d.print_runs.length} Print Run${d.print_runs.length>1?'s':''} Required</h3>
-        <p>Global supply is insufficient. Place production orders by the deadlines below.</p>
-        ${d.print_runs.map(p=>`<div style="margin-top:8px;font-size:13px"><strong>${p.sku_name}</strong> — ${fmt(p.units_needed)} units from ${p.source} · order by ${p.order_by} · ${p.notes}</div>`).join('')}
-      </div>
-    </div>`;
-  } else {
-    banner.innerHTML = `<div class="print-banner print-banner-ok">
-      <div class="print-icon">✅</div>
-      <div class="print-body">
-        <h3>No new print runs needed</h3>
-        <p>Global inventory covers all demand through Q4 including BFCM. All actions below are warehouse-to-warehouse transfers or FBA restocks.</p>
-      </div>
-    </div>`;
-  }
+  // ── Summary card (top of page) ────────────────────────────────
+  renderSummary(d);
 
-  // Supplier orders
-  if(d.supplier_orders && d.supplier_orders.length){
-    document.getElementById('tp-supplier-orders').innerHTML = renderSupplierOrders(d.supplier_orders);
-  }
-
-  // Quarter count chips
+  // ── Transfer count label on collapsible ───────────────────────
   const t = d.totals || {};
-  document.getElementById('tp-quarter-counts').innerHTML = `
-    <div class="scard" style="border-color:#bfdbfe"><div class="lbl">Q2 Actions</div><div class="val" style="color:var(--blue)">${t.Q2||0}</div><div class="sub">Apr – Jun transfers</div></div>
-    <div class="scard" style="border-color:#ddd6fe"><div class="lbl">Q3 Actions</div><div class="val" style="color:#7c3aed">${t.Q3||0}</div><div class="sub">Jul – Sep transfers</div></div>
-    <div class="scard" style="border-color:var(--cr-b)"><div class="lbl">Q4 / BFCM Actions</div><div class="val" style="color:var(--cr)">${t.Q4||0}</div><div class="sub">Oct – Dec transfers</div></div>`;
+  const totalActions = (t.Q2||0) + (t.Q3||0) + (t.Q4||0);
+  const countEl = document.getElementById('tp-transfer-counts');
+  if(countEl) countEl.textContent = `${totalActions} total actions across Q2/Q3/Q4`;
 
-  // Render each quarter section
+  // ── Quarter chips + quarter tables ────────────────────────────
+  document.getElementById('tp-quarter-counts').innerHTML = `
+    <div class="scard" style="border-color:#bfdbfe"><div class="lbl">Q2 Actions</div><div class="val" style="color:var(--blue)">${t.Q2||0}</div><div class="sub">Apr – Jun</div></div>
+    <div class="scard" style="border-color:#ddd6fe"><div class="lbl">Q3 Actions</div><div class="val" style="color:#7c3aed">${t.Q3||0}</div><div class="sub">Jul – Sep</div></div>
+    <div class="scard" style="border-color:var(--cr-b)"><div class="lbl">Q4 / BFCM</div><div class="val" style="color:var(--cr)">${t.Q4||0}</div><div class="sub">Oct – Dec</div></div>`;
   renderTPQuarter('tp-q2', d.Q2);
   renderTPQuarter('tp-q3', d.Q3);
   renderTPQuarter('tp-q4', d.Q4);
 
-  // Monthly forecast
+  // ── Monthly forecast ──────────────────────────────────────────
   renderForecast(d.monthly_forecast, d.sku_names);
 
   // Action reasoning log
