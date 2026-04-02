@@ -203,8 +203,11 @@ def run_simulation():
         return [('China_Supplier', 60, True)]
 
     QUARTER_OF    = {4:'Q2',5:'Q2',6:'Q2', 7:'Q3',8:'Q3',9:'Q3', 10:'Q4',11:'Q4',12:'Q4'}
-    # (sid, 'China') → total units needed from China regardless of AWD/Supplier split
+    # sid → total units needed from China (all destinations combined)
     po_new_china  = defaultdict(float)
+    # sid → {wh: units} — tracks which warehouses the China stock is going to and why
+    po_china_dest = defaultdict(lambda: defaultdict(float))
+    po_china_why  = defaultdict(list)   # sid → list of plain-English reasons
     po_new_canada = defaultdict(float)
     transfers_raw = defaultdict(list)
     action_log    = []
@@ -260,6 +263,14 @@ def run_simulation():
                         # Consolidate all China sources under one key per SKU
                         if 'China' in src or 'AWD' in src:
                             po_new_china[sid] += shortfall
+                            po_china_dest[sid][wh] += shortfall
+                            # Build a plain-English reason for boss-level reporting
+                            next2 = [demand_for(sid, wh, (m-1+i)%12+1) for i in range(1,3)]
+                            po_china_why[sid].append(
+                                f"{wh} runs short in {month_label} — "
+                                f"needs {int(sum(next2)):,} units in the next 2 months "
+                                f"(2025 pace) but has no transfer source available."
+                            )
                         else:
                             po_new_canada[sid] += shortfall
                         stk[sid][wh] = stk[sid].get(wh, 0) + shortfall
@@ -336,12 +347,24 @@ def run_simulation():
         sup  = supplier_stock.get(sid, {})
         china_avail = int(sup.get('china', 0))
 
+        # Build destination breakdown string: "EU: 422, SLI: 300, ..."
+        dest_map  = po_china_dest.get(sid, {})
+        dest_str  = ', '.join(f'{wh}: {int(round(u)):,}' for wh, u in
+                              sorted(dest_map.items(), key=lambda x: -x[1]))
+        why_lines = po_china_why.get(sid, [])
+        # Deduplicate why lines
+        seen = set(); why_uniq = []
+        for w in why_lines:
+            if w not in seen: seen.add(w); why_uniq.append(w)
+
         if china_avail >= qty:
             supplier_orders.append({
                 'sku_id':sid,'sku_name':name,'source':'China_Supplier',
                 'units_needed':qty,'supplier_stock':china_avail,
                 'covered':True,'order_by':'2026-08-02',
                 'type':'Supplier Order','run_date':run_date,
+                'destinations': dest_str,
+                'why': why_uniq,
                 'notes':f'China has {china_avail:,} in stock — fully covered. Place order now.',
             })
         else:
@@ -352,12 +375,16 @@ def run_simulation():
                     'units_needed':china_avail,'supplier_stock':china_avail,
                     'covered':True,'order_by':'2026-08-02',
                     'type':'Supplier Order','run_date':run_date,
+                    'destinations': dest_str,
+                    'why': why_uniq,
                     'notes':f'China has {china_avail:,} available — order all of it now.',
                 })
             print_runs.append({
                 'sku_id':sid,'sku_name':name,'source':'China_Supplier',
                 'units_needed':gap,'supplier_stock':china_avail,
                 'order_by':'2026-08-02','type':'Print Run','run_date':run_date,
+                'destinations': dest_str,
+                'why': why_uniq,
                 'notes':(
                     f'Need {qty:,} units total from China; only {china_avail:,} in existing stock. '
                     f'New production run of {gap:,} units required. '
