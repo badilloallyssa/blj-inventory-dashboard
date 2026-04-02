@@ -396,6 +396,20 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
     <div id="tp-q4"></div>
   </div>
 
+  <!-- Monthly Forecast -->
+  <div style="margin-top:36px;border-top:2px solid #e5e7eb;padding-top:24px">
+    <div class="section-title" style="font-size:15px;margin-bottom:4px">📅 Anticipated Monthly Sales — 2026</div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Units expected to sell per SKU per region each month, based on 90-day velocity × 2024-2025 seasonality. This is what drives the transfer plan above.</p>
+    <div id="tp-forecast"></div>
+  </div>
+
+  <!-- Action Reasoning Log -->
+  <div style="margin-top:36px;border-top:2px solid #e5e7eb;padding-top:24px">
+    <div class="section-title" style="font-size:15px;margin-bottom:4px">🧠 Why Each Transfer Is Recommended</div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Every transfer or order in the plan above is explained here — what triggered it, which warehouse is getting low, and where stock is coming from.</p>
+    <div id="tp-action-log"></div>
+  </div>
+
 </div>
 
 </div><!-- /main -->
@@ -984,6 +998,12 @@ async function loadTransferPlan(){
   renderTPQuarter('tp-q2', d.Q2);
   renderTPQuarter('tp-q3', d.Q3);
   renderTPQuarter('tp-q4', d.Q4);
+
+  // Monthly forecast
+  renderForecast(d.monthly_forecast, d.sku_names);
+
+  // Action reasoning log
+  renderActionLog(d.action_log);
 }
 
 function renderTPQuarter(elId, qData){
@@ -1037,6 +1057,104 @@ function renderTPQuarter(elId, qData){
       </div>
     </div>`;
   }).join('');
+}
+
+function renderForecast(forecast, skuNames){
+  if(!forecast || !Object.keys(forecast).length){
+    document.getElementById('tp-forecast').innerHTML = '<div class="empty">No forecast data.</div>';
+    return;
+  }
+  const months   = Object.keys(forecast);
+  const skuIds   = Object.keys(forecast[months[0]] || {});
+  const regions  = ['US','CA','EU','UK','AU'];
+
+  // Build one table per SKU
+  const html = skuIds.map(sid => {
+    const name = (skuNames && skuNames[sid]) || sid;
+    const headerCells = months.map(mo => `<th style="text-align:right;white-space:nowrap;font-size:11px">${mo}</th>`).join('');
+    const regionRows  = regions.map(reg => {
+      const cells = months.map(mo => {
+        const v = (forecast[mo][sid] || {})[reg] || 0;
+        const style = v > 2000 ? 'color:#dc2626;font-weight:700' : (v > 500 ? 'color:#ea580c' : 'color:var(--muted)');
+        return `<td style="text-align:right;font-size:12px;${style}">${v > 0 ? fmt(v) : '—'}</td>`;
+      }).join('');
+      return `<tr><td style="font-size:12px;color:var(--muted);padding-left:8px">${reg}</td>${cells}</tr>`;
+    });
+    // Total row
+    const totalCells = months.map(mo => {
+      const total = regions.reduce((s, r) => s + ((forecast[mo][sid] || {})[r] || 0), 0);
+      return `<td style="text-align:right;font-size:12px;font-weight:700">${total > 0 ? fmt(Math.round(total)) : '—'}</td>`;
+    }).join('');
+
+    return `<div class="card mb" style="margin-bottom:16px">
+      <div class="card-hdr"><h2 style="font-size:13px">${name}</h2></div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th style="min-width:60px">Region</th>${headerCells}</tr></thead>
+          <tbody>
+            ${regionRows.join('')}
+            <tr style="border-top:2px solid #e5e7eb">
+              <td style="font-size:12px;font-weight:700">Total</td>${totalCells}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('tp-forecast').innerHTML = html;
+}
+
+function renderActionLog(actions){
+  const el = document.getElementById('tp-action-log');
+  if(!actions || !actions.length){
+    el.innerHTML = '<div class="empty">No transfers planned.</div>';
+    return;
+  }
+
+  const Q_COLOR = {Q2:'var(--blue)',Q3:'#7c3aed',Q4:'#dc2626'};
+
+  // Group by quarter then month
+  const byQ = {};
+  actions.forEach(a => {
+    const q = a.quarter || 'Other';
+    if(!byQ[q]) byQ[q] = {};
+    const mo = a.month || '';
+    if(!byQ[q][mo]) byQ[q][mo] = [];
+    byQ[q][mo].push(a);
+  });
+
+  const html = ['Q2','Q3','Q4'].filter(q => byQ[q]).map(q => {
+    const color  = Q_COLOR[q] || '#333';
+    const months = Object.keys(byQ[q]);
+    const moHtml = months.map(mo => {
+      const rows = byQ[q][mo].map(a => {
+        const badge = a.type === 'Transfer'
+          ? '<span class="badge b-tr">Transfer</span>'
+          : '<span class="badge b-po">New PO</span>';
+        return `<div style="padding:10px 0;border-bottom:1px solid #f3f4f6">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            ${badge}
+            <span style="font-weight:600;font-size:13px">${a.sku||''}</span>
+            <span style="font-size:12px;color:var(--muted)">${a.wh||''}</span>
+            <span style="margin-left:auto;font-weight:700;font-size:13px">${fmt(a.qty)} units</span>
+          </div>
+          <div style="font-size:12px;color:#374151;line-height:1.5">${a.reason||''}</div>
+        </div>`;
+      }).join('');
+      return `<div style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">${mo}</div>
+        ${rows}
+      </div>`;
+    }).join('');
+
+    return `<div class="card mb" style="margin-bottom:16px;border-left:3px solid ${color}">
+      <div class="card-hdr"><h2 style="font-size:13px;color:${color}">${q}</h2></div>
+      <div style="padding:0 16px 8px">${moHtml}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = html;
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
