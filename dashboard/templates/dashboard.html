@@ -237,8 +237,13 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
   </div>
 
   <div class="card mb">
-    <div class="card-hdr"><h2>Stock Units by Warehouse</h2><span style="font-size:11px;color:var(--muted)">current on-hand units per SKU</span></div>
+    <div class="card-hdr"><h2>Units on Hand Matrix</h2><span style="font-size:11px;color:var(--muted)">actual units currently in each warehouse</span></div>
     <div class="mx-wrap" id="units-matrix-overview"><div class="loading">Loading...</div></div>
+    <div class="leg">
+      <div class="li"><div class="ld" style="background:var(--cr-bg);border:1px solid var(--cr)"></div>Under 500 units</div>
+      <div class="li"><div class="ld" style="background:var(--lw-bg);border:1px solid var(--lw)"></div>500–2,000 units</div>
+      <div class="li"><div class="ld" style="background:var(--ok-bg);border:1px solid var(--ok)"></div>2,000+ units</div>
+    </div>
   </div>
 
   <div class="card mb">
@@ -295,8 +300,13 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
   </div>
 
   <div class="card mb">
-    <div class="card-hdr"><h2>Stock Units by Warehouse</h2><span style="font-size:11px;color:var(--muted)">current on-hand units per SKU</span></div>
+    <div class="card-hdr"><h2>Units on Hand Matrix</h2><span style="font-size:11px;color:var(--muted)">actual units currently in each warehouse</span></div>
     <div class="mx-wrap" id="units-matrix-inventory"><div class="loading">Loading...</div></div>
+    <div class="leg">
+      <div class="li"><div class="ld" style="background:var(--cr-bg);border:1px solid var(--cr)"></div>Under 500 units</div>
+      <div class="li"><div class="ld" style="background:var(--lw-bg);border:1px solid var(--lw)"></div>500–2,000 units</div>
+      <div class="li"><div class="ld" style="background:var(--ok-bg);border:1px solid var(--ok)"></div>2,000+ units</div>
+    </div>
   </div>
 </div>
 
@@ -541,7 +551,7 @@ async function loadOverview(){
   renderMatrix('inv-matrix', d);
 
   // Units matrix (on overview page)
-  renderUnitsMatrix('units-matrix-overview');
+  renderMatrix('units-matrix-overview', {...d, matrix: d.units_matrix || []});
 
   // Supplier
   document.getElementById('supplier-cards').innerHTML = d.supplier.length
@@ -781,7 +791,7 @@ async function loadInventory(){
   });
 
   // Units matrix (on inventory page)
-  renderUnitsMatrix('units-matrix-inventory');
+  renderMatrix('units-matrix-inventory', {...d, matrix: d.units_matrix || []});
 
   destroyChart('days-stock');
   charts['days-stock'] = new Chart(document.getElementById('chart-days-stock'),{
