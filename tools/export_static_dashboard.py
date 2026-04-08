@@ -333,6 +333,75 @@ INTERCEPTOR_JS = r"""
 """
 
 
+def build_units_table_html(stock_rows, skus):
+    """Render stock units matrix as static HTML — no JS required."""
+    WH_ORDER  = ['SLI','HBG','SAV','KCM','Amazon_US_FBA','Amazon_CA_FBA','CA','EU','UK','AU']
+    WH_LABELS = {'SLI':'SLI','HBG':'HBG','SAV':'SAV','KCM':'KCM',
+                 'Amazon_US_FBA':'FBA US','Amazon_CA_FBA':'FBA CA',
+                 'CA':'CA','EU':'EU','UK':'UK','AU':'AU'}
+
+    stock_idx = {r['SKU_ID']: r for r in stock_rows}
+
+    hdr = '<th>SKU</th>' + ''.join(
+        f'<th style="text-align:right">{WH_LABELS[wh]}</th>' for wh in WH_ORDER
+    ) + '<th style="text-align:right;color:#2563eb">Total</th>'
+
+    col_totals = {wh: 0 for wh in WH_ORDER}
+    grand_total = 0
+    body_rows = []
+
+    for sku in skus:
+        row = stock_idx.get(sku['sku_id'], {})
+        total = 0
+        cells = []
+        for wh in WH_ORDER:
+            v = int(float(row.get(wh, 0) or 0))
+            col_totals[wh] += v
+            total += v
+            grand_total += v
+            if v == 0:
+                style = 'color:#d1d5db'
+            elif v < 500:
+                style = 'color:#dc2626;font-weight:700'
+            elif v < 2000:
+                style = 'color:#d97706;font-weight:600'
+            else:
+                style = 'color:#111827'
+            cells.append(f'<td style="text-align:right;font-size:12px;{style}">'
+                         + (f'{v:,}' if v > 0 else '—') + '</td>')
+
+        total_style = 'color:#2563eb;font-weight:700' if total > 0 else 'color:#d1d5db'
+        body_rows.append(
+            f'<tr><td style="font-size:12px;font-weight:600;white-space:nowrap" title="{sku["sku_name"]}">'
+            f'{sku["sku_name"]}</td>'
+            + ''.join(cells)
+            + f'<td style="text-align:right;font-size:12px;{total_style}">'
+            + (f'{total:,}' if total > 0 else '—') + '</td></tr>'
+        )
+
+    footer_cells = ''.join(
+        f'<td style="text-align:right;font-size:12px;font-weight:700;border-top:2px solid #e5e7eb;color:#374151">'
+        + (f'{col_totals[wh]:,}' if col_totals[wh] > 0 else '—') + '</td>'
+        for wh in WH_ORDER
+    )
+
+    return f'''
+<div style="font-size:11px;color:#6b6560;margin-bottom:8px;padding:0 2px">
+  <span style="color:#dc2626;font-weight:600">Red</span> = under 500 units &nbsp;·&nbsp;
+  <span style="color:#d97706;font-weight:600">Amber</span> = 500–2,000 &nbsp;·&nbsp;
+  <span style="color:#111827;font-weight:600">Black</span> = 2,000+
+</div>
+<table class="mt" style="font-size:12px">
+  <thead><tr>{hdr}</tr></thead>
+  <tbody>{''.join(body_rows)}</tbody>
+  <tfoot><tr>
+    <td style="font-size:12px;font-weight:700;border-top:2px solid #e5e7eb;color:#374151">Total</td>
+    {footer_cells}
+    <td style="text-align:right;font-size:12px;font-weight:800;border-top:2px solid #e5e7eb;color:#2563eb">{grand_total:,}</td>
+  </tr></tfoot>
+</table>'''
+
+
 def inject_static_script(html, static_data_json):
     """Inject STATIC_DATA + interceptor just before </head>."""
     script_block = (
@@ -360,6 +429,15 @@ def main():
         html = f.read()
 
     html = inject_static_script(html, static_data_json)
+
+    # Inject pre-rendered units matrix (no JS required)
+    skus = [{'sku_id': s['id'], 'sku_name': s['name']} for s in static_data['skus_list']]
+    units_html = build_units_table_html(static_data['stock_raw'], skus)
+    for placeholder_id in ['units-matrix-overview', 'units-matrix-inventory']:
+        html = html.replace(
+            f'<div class="mx-wrap" id="{placeholder_id}"><div class="loading">Loading...</div></div>',
+            f'<div class="mx-wrap" id="{placeholder_id}">{units_html}</div>'
+        )
 
     # Replace live indicator with static snapshot label
     html = html.replace(

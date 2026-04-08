@@ -183,6 +183,7 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
   <button onclick="switchTab('action-plan', this)">Action Plan</button>
   <button onclick="switchTab('year-ahead', this)">Year-Ahead Plan</button>
   <button onclick="switchTab('transfer-plan', this)">Transfer &amp; Print Plan</button>
+  <button onclick="switchTab('kj-trends', this)">KJ Trend Comparison</button>
 </div>
 
 <!-- Filter bar -->
@@ -236,6 +237,11 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
   </div>
 
   <div class="card mb">
+    <div class="card-hdr"><h2>Stock Units by Warehouse</h2><span style="font-size:11px;color:var(--muted)">current on-hand units per SKU</span></div>
+    <div class="mx-wrap" id="units-matrix-overview"><div class="loading">Loading...</div></div>
+  </div>
+
+  <div class="card mb">
     <div class="card-hdr"><h2>Supplier Stock</h2></div>
     <div class="sup-grid" id="supplier-cards"><div class="loading">Loading...</div></div>
   </div>
@@ -286,6 +292,11 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
       <div class="li"><div class="ld" style="background:var(--ok-bg);border:1px solid var(--ok)"></div>Healthy 90–365d</div>
       <div class="li"><div class="ld" style="background:var(--ov-bg);border:1px solid var(--ov)"></div>Overstock &gt;365d</div>
     </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-hdr"><h2>Stock Units by Warehouse</h2><span style="font-size:11px;color:var(--muted)">current on-hand units per SKU</span></div>
+    <div class="mx-wrap" id="units-matrix-inventory"><div class="loading">Loading...</div></div>
   </div>
 </div>
 
@@ -425,6 +436,13 @@ select:focus,input:focus{outline:none;border-color:var(--blue)}
 
 </div>
 
+<!-- ── Kids Journal Trend Comparison ──────────────────────────── -->
+<div id="page-kj-trends" class="page">
+  <div id="kj-trend-content">
+    <div class="empty">Loading…</div>
+  </div>
+</div>
+
 </div><!-- /main -->
 
 <script>
@@ -464,6 +482,7 @@ function switchTab(tab, btn){
   if(tab==='action-plan') loadActionPlan();
   if(tab==='year-ahead')     loadYearAhead();
   if(tab==='transfer-plan')  loadTransferPlan();
+  if(tab==='kj-trends')      loadKJTrends();
 }
 
 function applyFilters(){ loadSales(); loadInventory(); }
@@ -521,6 +540,9 @@ async function loadOverview(){
   renderMatrix('health-matrix', d);
   renderMatrix('inv-matrix', d);
 
+  // Units matrix (on overview page)
+  renderUnitsMatrix('units-matrix-overview');
+
   // Supplier
   document.getElementById('supplier-cards').innerHTML = d.supplier.length
     ? d.supplier.map(s=>`
@@ -541,6 +563,77 @@ function renderMatrix(elId, d){
     return `<tr><td>${row.name}</td>${cells}</tr>`;
   }).join('');
   el.innerHTML = `<table class="mt"><thead><tr><th>SKU</th>${hdrCells}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderUnitsMatrix(elId){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  const SD = window.STATIC_DATA;
+  if(!SD || !SD.stock_raw || !SD.skus_list){
+    el.innerHTML = '<div class="empty">No stock data.</div>';
+    return;
+  }
+
+  const WH_ORDER  = ['SLI','HBG','SAV','KCM','Amazon_US_FBA','Amazon_CA_FBA','CA','EU','UK','AU'];
+  const WH_LABELS = {SLI:'SLI',HBG:'HBG',SAV:'SAV',KCM:'KCM',
+                     Amazon_US_FBA:'FBA US',Amazon_CA_FBA:'FBA CA',
+                     CA:'CA',EU:'EU',UK:'UK',AU:'AU'};
+
+  // Index stock_raw by SKU_ID
+  const stockIdx = {};
+  SD.stock_raw.forEach(r => { stockIdx[r.SKU_ID] = r; });
+
+  const hdrCells = WH_ORDER.map(wh=>`<th style="text-align:right">${WH_LABELS[wh]}</th>`).join('');
+  const hdrTotal = `<th style="text-align:right;color:var(--blue)">Total</th>`;
+
+  const rows = SD.skus_list.map(sku => {
+    const row = stockIdx[sku.id] || {};
+    let total = 0;
+    const cells = WH_ORDER.map(wh => {
+      const v = Math.round(parseFloat(row[wh] || 0));
+      total += v;
+      const color = v === 0 ? 'color:#d1d5db'
+                  : v < 500 ? 'color:#dc2626;font-weight:700'
+                  : v < 2000 ? 'color:#d97706;font-weight:600'
+                  : 'color:#111827';
+      return `<td style="text-align:right;font-size:12px;${color}">${v > 0 ? v.toLocaleString() : '—'}</td>`;
+    }).join('');
+    const totalColor = total === 0 ? 'color:#d1d5db' : 'color:var(--blue);font-weight:700';
+    return `<tr>
+      <td style="font-size:12px;font-weight:600;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${sku.name}">${sku.name}</td>
+      ${cells}
+      <td style="text-align:right;font-size:12px;${totalColor}">${total > 0 ? total.toLocaleString() : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Column totals
+  const colTotals = WH_ORDER.map(wh => {
+    const t = SD.skus_list.reduce((s, sku) => {
+      const row = stockIdx[sku.id] || {};
+      return s + Math.round(parseFloat(row[wh] || 0));
+    }, 0);
+    return `<td style="text-align:right;font-size:12px;font-weight:700;border-top:2px solid #e5e7eb;color:#374151">${t > 0 ? t.toLocaleString() : '—'}</td>`;
+  }).join('');
+  const grandTotal = SD.skus_list.reduce((s, sku) => {
+    const row = stockIdx[sku.id] || {};
+    return s + WH_ORDER.reduce((ss, wh) => ss + Math.round(parseFloat(row[wh]||0)), 0);
+  }, 0);
+
+  el.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:0 2px">
+      <span style="color:#dc2626;font-weight:600">Red</span> = under 500 units &nbsp;·&nbsp;
+      <span style="color:#d97706;font-weight:600">Amber</span> = 500–2,000 &nbsp;·&nbsp;
+      <span style="color:#111827;font-weight:600">Black</span> = 2,000+
+    </div>
+    <table class="mt" style="font-size:12px">
+      <thead><tr><th>SKU</th>${hdrCells}${hdrTotal}</tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr>
+        <td style="font-size:12px;font-weight:700;border-top:2px solid #e5e7eb;color:#374151">Total</td>
+        ${colTotals}
+        <td style="text-align:right;font-size:12px;font-weight:800;border-top:2px solid #e5e7eb;color:var(--blue)">${grandTotal.toLocaleString()}</td>
+      </tr></tfoot>
+    </table>`;
 }
 
 // ── Sales & Trends ────────────────────────────────────────────────────────────
@@ -686,6 +779,9 @@ async function loadInventory(){
       colors.push(cell.cls==='cr'?'#fecaca':cell.cls==='lw'?'#fde68a':cell.cls==='ov'?'#ddd6fe':'#bbf7d0');
     });
   });
+
+  // Units matrix (on inventory page)
+  renderUnitsMatrix('units-matrix-inventory');
 
   destroyChart('days-stock');
   charts['days-stock'] = new Chart(document.getElementById('chart-days-stock'),{
@@ -1327,6 +1423,147 @@ function renderActionLog(actions){
   }).join('');
 
   el.innerHTML = html;
+}
+
+// ── Kids Journal Trend Comparison ────────────────────────────────────────────
+async function loadKJTrends(){
+  const d = await fetch('/api/transfer-plan').then(r=>r.json());
+  const kj = d.kj_comparison;
+  const el = document.getElementById('kj-trend-content');
+  if(!kj || !kj.trend_2025){
+    el.innerHTML = '<div class="empty">No comparison data available. Re-run build_transfer_plan.py.</div>';
+    return;
+  }
+
+  const geos = kj.trend_2025.rows.map(r=>r.geo);
+  const t25  = kj.trend_2025;
+  const t24  = kj.trend_2024;
+
+  const COL = {Q2:'#2563eb', '2025':'#2563eb', '2024':'#dc2626'};
+
+  // Build comparison table rows
+  const tableRows = geos.map((geo, i) => {
+    const r25 = t25.rows[i];
+    const r24 = t24.rows[i];
+    const diff = r24.print - r25.print;
+    const diffStr = diff > 0 ? `<span style="color:#dc2626">+${fmt(diff)}</span>`
+                  : diff < 0 ? `<span style="color:#16a34a">${fmt(diff)}</span>`
+                  : `<span style="color:#9ca3af">—</span>`;
+    const rowBg = i % 2 === 0 ? '' : 'background:#f9fafb';
+    const boldIf = (v) => v > 0 ? `<strong style="color:#dc2626">${fmt(v)}</strong>` : `<span style="color:#d1d5db">—</span>`;
+    return `<tr style="${rowBg}">
+      <td style="padding:8px 10px;font-size:13px;font-weight:600">${geo}</td>
+      <td style="padding:8px 10px;text-align:right;font-size:12px;color:#6b7280">${fmt(r25.stock)}</td>
+      <td style="padding:8px 10px;text-align:right;font-size:12px;color:#374151">${fmt(r25.demand)}</td>
+      <td style="padding:8px 10px;text-align:right">${boldIf(r25.print)}</td>
+      <td style="padding:8px 10px;text-align:right;font-size:12px;color:#374151">${fmt(r24.demand)}</td>
+      <td style="padding:8px 10px;text-align:right">${boldIf(r24.print)}</td>
+      <td style="padding:8px 10px;text-align:right">${diffStr}</td>
+    </tr>`;
+  }).join('');
+
+  // Bar chart data
+  const chartId = 'kj-chart';
+
+  el.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px">
+      Based on current stock as of today · Demand = Apr 3 – Dec 31, 2026 + Jan/Feb 2027 carry-over
+    </div>
+
+    <!-- Summary cards -->
+    <div class="grid-3" style="margin-bottom:20px">
+      <div class="scard" style="border-color:#bfdbfe">
+        <div class="lbl">2025 Trend — Print Run</div>
+        <div class="val" style="color:#2563eb">${fmt(t25.total)}</div>
+        <div class="sub">units needed</div>
+      </div>
+      <div class="scard" style="border-color:#fecaca">
+        <div class="lbl">2024 Trend — Print Run</div>
+        <div class="val" style="color:#dc2626">${fmt(t24.total)}</div>
+        <div class="sub">units needed</div>
+      </div>
+      <div class="scard" style="border-color:#fde68a">
+        <div class="lbl">Extra if 2024 repeats</div>
+        <div class="val" style="color:#d97706">+${fmt(t24.total - t25.total)}</div>
+        <div class="sub">${Math.round((t24.total/t25.total - 1)*100)}% more units</div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card mb" style="padding:16px">
+      <div style="font-weight:600;font-size:13px;margin-bottom:12px">Print Run by Destination</div>
+      <canvas id="${chartId}" height="120"></canvas>
+    </div>
+
+    <!-- Table -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-hdr">
+        <h2 style="font-size:13px">Per-GEO Breakdown — ${kj.sku_name}</h2>
+        <span class="cnt">2025 actuals vs 2024 actuals</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:#f3f4f6">
+              <th style="text-align:left;padding:8px 10px;font-size:11px;color:#6b7280;font-weight:600">Destination</th>
+              <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;font-weight:600">Stock Now</th>
+              <th style="text-align:right;padding:8px 10px;font-size:11px;color:#2563eb;font-weight:600">2025 Demand</th>
+              <th style="text-align:right;padding:8px 10px;font-size:11px;color:#2563eb;font-weight:600">2025 Print</th>
+              <th style="text-align:right;padding:8px 10px;font-size:11px;color:#dc2626;font-weight:600">2024 Demand</th>
+              <th style="text-align:right;padding:8px 10px;font-size:11px;color:#dc2626;font-weight:600">2024 Print</th>
+              <th style="text-align:right;padding:8px 10px;font-size:11px;color:#6b7280;font-weight:600">Difference</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+          <tfoot>
+            <tr style="background:#f3f4f6;font-weight:700">
+              <td style="padding:8px 10px;font-size:13px">TOTAL</td>
+              <td colspan="2"></td>
+              <td style="padding:8px 10px;text-align:right;font-size:14px;color:#2563eb">${fmt(t25.total)}</td>
+              <td></td>
+              <td style="padding:8px 10px;text-align:right;font-size:14px;color:#dc2626">${fmt(t24.total)}</td>
+              <td style="padding:8px 10px;text-align:right;font-size:13px;color:#dc2626">+${fmt(t24.total - t25.total)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Key insight -->
+    <div class="card" style="border-left:4px solid #d97706;padding:14px 16px;display:flex;gap:12px;align-items:flex-start">
+      <span style="font-size:22px">💡</span>
+      <div>
+        <div style="font-weight:700;font-size:13px;color:#b45309;margin-bottom:4px">Why FBA drives the gap</div>
+        <div style="font-size:12px;color:#374151;line-height:1.6">
+          Amazon US FBA holds very little physical stock but processes the majority of US online sales.
+          In 2024, FBA demand was ~${Math.round((t24.rows.find(r=>r.geo==='Amazon_US_FBA')||{demand:0}).demand / ((t25.rows.find(r=>r.geo==='Amazon_US_FBA')||{demand:1}).demand) * 100 - 100)}% higher than 2025.
+          The US physical warehouses (SLI/HBG/SAV/KCM) self-balance in both scenarios — no print run needed for them.
+          All print run units go directly to FBA and CA.
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Render bar chart
+  destroyChart(chartId);
+  const printGeos = geos.filter((g,i) => t25.rows[i].print > 0 || t24.rows[i].print > 0);
+  const d25 = printGeos.map(g => (t25.rows.find(r=>r.geo===g)||{print:0}).print);
+  const d24 = printGeos.map(g => (t24.rows.find(r=>r.geo===g)||{print:0}).print);
+  charts[chartId] = new Chart(document.getElementById(chartId), {
+    type: 'bar',
+    data: {
+      labels: printGeos,
+      datasets: [
+        {label:'2025 trend', data:d25, backgroundColor:'#93c5fd', borderColor:'#2563eb', borderWidth:1},
+        {label:'2024 trend', data:d24, backgroundColor:'#fca5a5', borderColor:'#dc2626', borderWidth:1},
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:true,
+      plugins:{legend:{position:'top'}},
+      scales:{y:{beginAtZero:true, ticks:{callback:v=>v.toLocaleString()}}}
+    }
+  });
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────

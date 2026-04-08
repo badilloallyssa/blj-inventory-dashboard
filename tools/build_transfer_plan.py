@@ -338,6 +338,136 @@ def compute_print_runs(data, actuals, vel_raw, sea_raw, sku_names, sku_list, run
     return print_runs, supplier_orders
 
 
+# ── STEP 1b: Kids Journal 2024 vs 2025 trend comparison ──────────────────────
+
+def compute_kj_trend_comparison(data):
+    """
+    Compute Kids Journal print run destination breakdown at both 2024 and 2025 pace.
+    Returns a dict ready to embed in transfer_plan.json.
+    """
+    from collections import defaultdict as _dd
+
+    SALES_WH_MAP_LOC = {
+        'US':            ['SLI','HBG','SAV','KCM'],
+        'Amazon_US_FBA': ['Amazon_US_FBA'],
+        'CA':            ['CA'],
+        'Amazon_CA_FBA': ['Amazon_CA_FBA'],
+        'UK':            ['UK'],
+        'EU':            ['EU'],
+        'AU':            ['AU'],
+    }
+    GEO_WHS_LOC = {
+        'SLI':['SLI'],'HBG':['HBG'],'SAV':['SAV'],'KCM':['KCM'],
+        'Amazon_US_FBA':['Amazon_US_FBA'],
+        'CA':['CA'],'UK':['UK'],'EU':['EU'],'AU':['AU'],
+    }
+    ALL_GEOS_LOC   = list(GEO_WHS_LOC.keys())
+    US_WH_GEOS_LOC = ['SLI','HBG','SAV','KCM']
+    APR_FACTOR_LOC = 27.0 / 30.0
+
+    # Find Kids Journal SKU
+    kj_sid = None
+    for s in data['config']['skus']:
+        if 'kids' in s['sku_name'].lower() and 'journal' in s['sku_name'].lower():
+            kj_sid = s['sku_id']
+            break
+    if not kj_sid:
+        return {}
+
+    stk_all = get_starting_stock(data)
+
+    def build_actuals_year(year):
+        raw = _dd(lambda: _dd(lambda: _dd(float)))
+        for row in data.get('sales', []):
+            if str(row.get('year', '')) != str(year): continue
+            sid = row.get('sku_id', '').strip()
+            if sid != kj_sid: continue
+            wh  = row.get('warehouse', '').strip()
+            d   = row.get('date', '')
+            try:
+                mo = int(d.split('-')[1]) if '-' in d else int(d.split('/')[0])
+            except Exception:
+                continue
+            raw[sid][wh][mo] += float(row.get('units_sold', 0) or 0)
+        out = _dd(lambda: _dd(lambda: _dd(float)))
+        for sid2, wh_data in raw.items():
+            for sales_wh, month_data in wh_data.items():
+                phys_whs = SALES_WH_MAP_LOC.get(sales_wh)
+                if not phys_whs: continue
+                n = len(phys_whs)
+                for mo, units in month_data.items():
+                    for pwh in phys_whs:
+                        out[sid2][pwh][mo] += units / n
+        return out
+
+    def run_geo(actuals_yr):
+        def actual_dem(wh, m):
+            return actuals_yr.get(kj_sid, {}).get(wh, {}).get(m, 0.0)
+
+        geo_stock  = {}
+        geo_demand = {}
+        geo_dem_sell = {}
+        geo_dem_co   = {}
+
+        for geo, whs in GEO_WHS_LOC.items():
+            stock = sum(stk_all.get(kj_sid, {}).get(w, 0) for w in whs)
+            sell  = actual_dem(whs[0], 4) * APR_FACTOR_LOC
+            for m in range(5, 13):
+                sell += actual_dem(whs[0], m)
+            co = actual_dem(whs[0], 1) + actual_dem(whs[0], 2)
+            geo_stock[geo]    = stock
+            geo_dem_sell[geo] = sell
+            geo_dem_co[geo]   = co
+            geo_demand[geo]   = sell + co
+
+        geo_gap = {geo: geo_stock[geo] - geo_demand[geo] for geo in ALL_GEOS_LOC}
+
+        def do_xf(src, dst):
+            surplus = geo_gap.get(src, 0)
+            deficit = -geo_gap.get(dst, 0)
+            if surplus <= 0 or deficit <= 0: return
+            usable = min(surplus, geo_stock[src] * 0.75)
+            moved  = min(usable, deficit)
+            if moved <= 0: return
+            geo_gap[src] -= moved
+            geo_gap[dst] += moved
+
+        for src in US_WH_GEOS_LOC:
+            for dst in US_WH_GEOS_LOC:
+                if src != dst: do_xf(src, dst)
+        for dst in ['Amazon_US_FBA', 'CA']:
+            for src in sorted(US_WH_GEOS_LOC, key=lambda g: geo_gap.get(g, 0), reverse=True):
+                do_xf(src, dst)
+        for route in [('UK','AU'),('EU','AU'),('UK','EU'),('EU','UK')]:
+            do_xf(*route)
+
+        geo_print = {geo: int(round(max(0, -geo_gap[geo]))) for geo in ALL_GEOS_LOC}
+        total     = sum(geo_print.values())
+
+        rows = []
+        for geo in ALL_GEOS_LOC:
+            rows.append({
+                'geo':    geo,
+                'stock':  int(geo_stock[geo]),
+                'demand': int(geo_demand[geo]),
+                'print':  geo_print[geo],
+            })
+        return {'total': total, 'rows': rows}
+
+    act2025 = build_actuals_year(2025)
+    act2024 = build_actuals_year(2024)
+
+    r2025 = run_geo(act2025)
+    r2024 = run_geo(act2024)
+
+    return {
+        'sku_id':   kj_sid,
+        'sku_name': next(s['sku_name'] for s in data['config']['skus'] if s['sku_id'] == kj_sid),
+        'trend_2025': r2025,
+        'trend_2024': r2024,
+    }
+
+
 # ── STEP 2: Monthly simulation for TRANSFER routing only ──────────────────────
 
 def run_transfer_simulation(data, actuals, vel_raw, sea_raw, sku_names, sku_list):
@@ -487,6 +617,9 @@ def main():
     print_runs, supplier_orders = compute_print_runs(
         data, actuals, vel_raw, sea_raw, sku_names, sku_list, run_date)
 
+    print("\nStep 1b — Kids Journal 2024 vs 2025 trend comparison...")
+    kj_comparison = compute_kj_trend_comparison(data)
+
     print("\nStep 2 — Planning transfers (monthly simulation)...")
     transfers_deduped, action_log, monthly_forecast = run_transfer_simulation(
         data, actuals, vel_raw, sea_raw, sku_names, sku_list)
@@ -516,6 +649,7 @@ def main():
         'action_log':       action_log,
         'sku_names':        sku_names,
         'forecast_basis':   '2025 actual monthly sales (velocity fallback if no history)',
+        'kj_comparison':    kj_comparison,
     }
     for q in ('Q2','Q3','Q4'):
         rows      = transfers_deduped.get(q, [])
