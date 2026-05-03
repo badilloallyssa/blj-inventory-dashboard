@@ -61,8 +61,14 @@ def generate_report():
         e['sku_id']: {k: float(v) for k, v in e.get('stock', {}).items()}
         for e in data.get('current_stock', [])
     }
-    sup_idx = {
-        e['sku_id']: float(e.get('china_supplier', 0)) + float(e.get('canada_supplier', 0))
+    # Supplier stock — split by geography:
+    # canada_supplier → CA channels only (Amazon_CA_FBA / CA Shopify)
+    # china_supplier  → flexible, can go to any channel
+    sup_detail = {
+        e['sku_id']: {
+            'canada': float(e.get('canada_supplier', 0)),
+            'china':  float(e.get('china_supplier',  0)),
+        }
         for e in data.get('supplier_stock', [])
     }
 
@@ -145,7 +151,7 @@ def generate_report():
                 'buf_parts':  buf_parts,
             }
 
-        # --- Global buffer (for global summary table) ---
+        # --- Global buffer (for demand-breakdown table) ---
         g_buf_parts = {}
         g_buf_total = 0.0
         for m in buffer_months:
@@ -157,28 +163,36 @@ def generate_report():
             g_buf_total += a
         g_buf_total = g_buf_total / len(buffer_months)  # 30-day = 1-month average
         g_demand = sum(g_monthly[m]['max'] for m in forecast_months)
-        g_stock  = sum(stock_idx.get(sid, {}).values()) + sup_idx.get(sid, 0)
+
+        # Supplier stock (geography-restricted)
+        canada_sup = sup_detail.get(sid, {}).get('canada', 0)
+        china_sup  = sup_detail.get(sid, {}).get('china',  0)
+
+        # Informational global stock (all warehouses + supplier — used in report tables)
+        g_stock = sum(stock_idx.get(sid, {}).values()) + canada_sup + china_sup
 
         # ── TRANSFERS & PRINT LOGIC ──────────────────────────────────────────
         #
-        # Step 1  UK transfers — only send what UK can spare above its own needs.
-        # Step 2  Compute start_stock for all regions.
-        # Step 3  Calculate per-channel shortfalls (demand + buffer − start_stock).
-        # Step 4a If ANY shortfall exists → print for ALL short channels (no hub transfers).
-        # Step 4b If no shortfall anywhere → hub→FBA transfers reposition existing stock.
+        # Step 1: UK transfers (UK→AU for journals; UK→EU for all) — surplus only
+        # Step 2: Build start_stock per channel
+        # Step 3: Supplier allocation:
+        #         - Canada supplier → Amazon_CA_FBA only (restricted to CA channels)
+        #         - China supplier  → any channel, by deficit priority
+        # Step 4: Global gap check (consumer channels + supplier only; hub stock excluded
+        #         because hubs serve wholesale and do NOT feed FBA)
+        # Step 5: Print residual gaps direct from factory to channel (no hub routing)
+        # Step 6: Top-up prints for blocked routes when globally sufficient
 
         uk_stock   = stock_idx.get(sid, {}).get('UK', 0)
-        uk_surplus = max(0.0,
-                         uk_stock - ch['UK']['demand'] - ch['UK']['buffer'])
+        uk_surplus = max(0.0, uk_stock - ch['UK']['demand'] - ch['UK']['buffer'])
 
         transfers   = []
         incoming    = defaultdict(float)
         outgoing_uk = 0.0
 
-        # Step 1a: UK → AU (journals only, limited to UK surplus above own needs)
+        # Step 1a: UK → AU (journals only)
         if is_j:
-            au_def = max(0.0,
-                         ch['AU']['demand'] + ch['AU']['buffer'] - ch['AU']['current'])
+            au_def = max(0.0, ch['AU']['demand'] + ch['AU']['buffer'] - ch['AU']['current'])
             if au_def > 0 and uk_surplus > 0:
                 pull = min(au_def, uk_surplus)
                 transfers.append({
@@ -192,9 +206,8 @@ def generate_report():
                 outgoing_uk    += pull
                 uk_surplus     -= pull
 
-        # Step 1b: UK → EU (limited to remaining UK surplus)
-        eu_def = max(0.0,
-                     ch['EU']['demand'] + ch['EU']['buffer'] - ch['EU']['current'])
+        # Step 1b: UK → EU
+        eu_def = max(0.0, ch['EU']['demand'] + ch['EU']['buffer'] - ch['EU']['current'])
         if eu_def > 0 and uk_surplus > 0:
             pull = min(eu_def, uk_surplus)
             transfers.append({
@@ -207,7 +220,7 @@ def generate_report():
             outgoing_uk    += pull
             uk_surplus     -= pull
 
-        # Step 2: Start stock after UK transfers (before any print or hub moves)
+        # Step 2: Start stock after UK transfers
         start_stock = {}
         for region in all_channels:
             if region == 'UK':
@@ -215,14 +228,36 @@ def generate_report():
             else:
                 start_stock[region] = ch[region]['current'] + incoming.get(region, 0)
 
-        # Gate on GLOBAL shortage — only print genuinely new units when total supply
-        # across all warehouses is insufficient to cover demand + buffer.
-        global_gap_check = max(0.0, g_demand + g_buf_total - g_stock)
-        is_globally_short = global_gap_check > 0
+        # Step 3: Supplier allocation (before hub repositioning — reduces what hubs need to cover)
+        supplier_alloc = defaultdict(float)
 
-        # Step 4: Hub→FBA repositioning — always runs regardless of print mode.
-        # Using stock that already exists in hubs is always better than printing fresh units.
-        # Print (Step 5) only covers what repositioning can't fill.
+        # Canada supplier → CA FBA only (restricted: Canada factory → CA channels)
+        if canada_sup > 0:
+            need = max(0.0, ch['Amazon_CA_FBA']['demand'] + ch['Amazon_CA_FBA']['buffer']
+                       - start_stock['Amazon_CA_FBA'])
+            alloc = min(canada_sup, need)
+            if alloc > 0:
+                supplier_alloc['Amazon_CA_FBA'] += alloc
+                start_stock['Amazon_CA_FBA']    += alloc
+
+        # China supplier → fill highest-deficit consumer channels (US FBA first)
+        if china_sup > 0:
+            pool = china_sup
+            for region in ['Amazon_US_FBA', 'AU', 'EU', 'Amazon_CA_FBA']:
+                if pool <= 0:
+                    break
+                need = max(0.0, ch[region]['demand'] + ch[region]['buffer']
+                           - start_stock[region])
+                if need > 0:
+                    alloc = min(pool, need)
+                    supplier_alloc[region] += alloc
+                    start_stock[region]    += alloc
+                    pool -= alloc
+
+        # Step 4: Hub repositioning — use existing warehouse stock to fill FBA gaps.
+        # US hubs (HBG/SLI/SAV) → Amazon US FBA
+        # CA Hub → Amazon CA FBA (CA Hub is already in Canada, natural route to CA FBA)
+        # Note: new prints never go via hubs — prints ship direct from factory to channel.
         for region, src_list in [
             ('Amazon_US_FBA', [('HBG', 'HBG'), ('SLI', 'SLI'), ('SAV', 'SAV')]),
             ('Amazon_CA_FBA', [('CA',  'CA Hub')]),
@@ -247,30 +282,34 @@ def generate_report():
                     start_stock[region] += pull
                     gap -= pull
 
-        # Step 5: Print — only when globally short, only for residual gaps that
-        # repositioning couldn't fill. Print ships direct to the channel (no hub routing).
+        # Step 5: Global gap check — after ALL repositioning (UK + supplier + hub).
+        # Compare total consumer channel stock (post-reposition) vs total demand+buffer.
+        # If globally sufficient, any remaining individual channel gaps are blocked-route
+        # problems (UK can't reach US, cards can't go UK→AU) → small top-up prints.
+        # If globally short, print the residual gaps direct from factory to channel.
+        post_reposition_total  = sum(start_stock[r] for r in all_channels)
+        channel_need_total     = sum(ch[r]['demand'] + ch[r]['buffer'] for r in all_channels)
+        global_gap_check       = max(0.0, channel_need_total - post_reposition_total)
+        is_globally_short      = global_gap_check > 0
+
         print_alloc = {}
         if is_globally_short:
             for region in all_channels:
-                residual = max(0.0,
-                               ch[region]['demand'] + ch[region]['buffer']
+                residual = max(0.0, ch[region]['demand'] + ch[region]['buffer']
                                - start_stock[region])
                 if residual > 0:
                     print_alloc[region] = int(residual)
-                    incoming[region]    += residual
                     start_stock[region] += residual
 
         total_print = sum(print_alloc.values())
         is_printing  = total_print > 0
 
-        # Step 6: Top-up prints — when globally sufficient, some channels may still have
-        # gaps because transfer routes are blocked (cards can't go UK→AU) or source
-        # stock is exhausted. Fill these with small targeted prints.
+        # Step 6: Top-up prints — globally sufficient but specific channel gaps remain
+        # due to blocked routes (UK→US blocked, cards UK→AU blocked) or exhausted sources.
         top_up_print = {}
         if not is_globally_short:
             for region in all_channels:
-                residual = max(0.0,
-                               ch[region]['demand'] + ch[region]['buffer']
+                residual = max(0.0, ch[region]['demand'] + ch[region]['buffer']
                                - start_stock[region])
                 if residual > 0:
                     top_up_print[region] = int(residual)
@@ -282,8 +321,10 @@ def generate_report():
             'name': name, 'is_journal': is_j,
             'g_monthly': g_monthly, 'g_buf_parts': g_buf_parts,
             'g_demand': g_demand, 'g_buf_total': g_buf_total, 'g_stock': g_stock,
+            'canada_sup': canada_sup, 'china_sup': china_sup,
             'ch': ch,
             'transfers': transfers, 'incoming': dict(incoming),
+            'supplier_alloc': dict(supplier_alloc),
             'outgoing_uk': outgoing_uk,
             'print_alloc': print_alloc, 'total_print': total_print,
             'is_printing': is_printing,
@@ -399,11 +440,11 @@ def generate_report():
     md += f"| 2025 October | {int(oct['2025']):,} |\n"
     md += f"| **We plan for** | **{int(oct['max']):,}** ← the higher of the two |\n\n"
 
-    md += "### Safety Buffer: 90 Days of Stock After January\n\n"
+    md += "### Safety Buffer: 30 Days of Stock After January\n\n"
     md += ("The buffer is the average of what each channel historically sells in "
-           "February, March, and April — then average them. That single monthly "
-           "average is the 30-day buffer: it must still be sitting in the warehouse "
-           "on February 1st before the next order cycle completes.\n\n")
+           "February, March, and April. That single monthly average is the 30-day buffer: "
+           "it must still be sitting in the warehouse on February 1st before the next "
+           "order cycle completes.\n\n")
 
     md += f"**Example — {ex_sd['name']} global buffer:**\n\n"
     md += "| Month | Historical Sales | Average |\n| :--- | :--- | ---: |\n"
@@ -413,24 +454,34 @@ def generate_report():
         md += f"| {month_short[m]} | {vals} | **{int(bd['avg']):,}** |\n"
     md += f"| **30-day buffer (avg)** | | **{int(ex_sd['g_buf_total']):,}** |\n\n"
 
-    md += "### Print vs Transfer Decision\n\n"
-    md += ("**If a channel is short and we need a new print run:** "
-           "the print ships direct from the printer to that channel — US FBA, CA FBA, or AU. "
-           "We do not route through hubs. Hub stock stays in hubs to serve domestic and "
-           "wholesale orders.\n\n"
-           "**If global stock is sufficient (no print run):** "
-           "we reposition hub stock (HBG/SLI → US FBA, CA Hub → CA FBA) to fill "
-           "channel deficits. No new units are ordered.\n\n"
-           "**UK transfers (UK → AU for journals, UK → EU) always happen** "
-           "when those markets have a deficit — regardless of whether we're printing.\n\n")
+    md += "### How Stock Fills Each Channel\n\n"
+    md += ("Stock reaches each consumer channel in a specific sequence — cheapest moves first, "
+           "new print only as a last resort:\n\n"
+           "1. **UK → AU / EU transfers** (journals to AU; all SKUs to EU) — "
+           "UK sends only what it can spare above its own demand + buffer.\n"
+           "2. **Supplier stock** — units already ordered and waiting at the factory. "
+           "Canada supplier stock is restricted to Amazon CA FBA. "
+           "China supplier stock can go to any channel with a deficit.\n"
+           "3. **Hub→FBA repositioning** — existing stock in US hubs (HBG/SLI/SAV) moves "
+           "to Amazon US FBA; CA Hub moves to Amazon CA FBA. "
+           "Hubs serve their own wholesale orders; any surplus above wholesale needs is "
+           "available to reposition into FBA.\n"
+           "4. **Print order** — only ordered if total consumer channel stock (after all "
+           "repositioning) is still short. New print ships **direct from the factory to the "
+           "destination channel** — never routed through a hub first.\n"
+           "5. **Top-up print** — when globally sufficient but one channel can't be reached "
+           "by any transfer route (e.g. UK→US FBA is blocked, cards can't go UK→AU), "
+           "a small targeted print fills that specific gap.\n\n")
 
     md += "### Routing Constraints\n\n"
     md += "| Route | Allowed? | Notes |\n| :--- | :--- | :--- |\n"
     md += "| UK → AU | ✅ Journals only | Cards blocked; must print direct to AU |\n"
     md += "| UK → EU | ✅ All SKUs | |\n"
-    md += "| HBG / SLI → US FBA | ✅ If not printing | Skipped when a print run is active |\n"
-    md += "| CA Hub → CA FBA | ✅ If not printing | Same rule |\n"
-    md += "| UK → US / CA | ❌ | Not a valid route |\n\n"
+    md += "| HBG / SLI / SAV → US FBA | ✅ Always | Existing hub stock repositioned |\n"
+    md += "| CA Hub → CA FBA | ✅ Always | Existing CA stock repositioned |\n"
+    md += "| New print → hub → FBA | ❌ | Prints ship direct; never via hub |\n"
+    md += "| UK → US FBA / CA FBA | ❌ | Not a valid route |\n"
+    md += "| Canada supplier → US FBA | ❌ | Canada supplier restricted to CA channels |\n\n"
     md += "---\n\n"
 
     # ── SECTION 2: DEMAND BREAKDOWN ─────────────────────────────────────────
@@ -486,30 +537,38 @@ def generate_report():
             deficit = int(c['deficit'])
             curr    = int(c['current'])
             dem     = int(c['demand'])
-            # Determine fill method — check print_alloc first, then transfers, then top-up
+            # Determine fill method — priority: sufficient → print → supplier → transfer → top-up
+            sup_qty = int(sd['supplier_alloc'].get(region, 0))
+            tp_qty  = sd['top_up_print'].get(region, 0)
+            dest_transfers = [t for t in sd['transfers'] if t['dest'] == region]
+
             if deficit == 0:
                 fill = "✅ Sufficient stock"
+                if sup_qty:
+                    fill += f" (incl. {sup_qty:,} supplier)"
             elif region in sd['print_alloc']:
                 qty  = sd['print_alloc'][region]
                 note = " (UK→AU blocked for cards)" if region == 'AU' and not sd['is_journal'] else ""
-                fill = f"🖨️ Print {qty:,} direct to {region.replace('_',' ')}{note}"
+                parts = []
+                if sup_qty:
+                    parts.append(f"📦 {sup_qty:,} supplier")
+                parts.append(f"🖨️ print {qty:,}")
+                fill = f"{' + '.join(parts)} direct to {region.replace('_',' ')}{note}"
             else:
-                dest_transfers = [t for t in sd['transfers'] if t['dest'] == region]
-                tp_qty = sd['top_up_print'].get(region, 0)
-                if dest_transfers and tp_qty:
-                    parts = [f"{t['source']} {int(t['qty']):,}" for t in dest_transfers]
-                    icon  = "✈️" if any(t['source'] == 'UK' for t in dest_transfers) else "📦"
-                    fill  = (f"{icon} Transfer: {' + '.join(parts)} "
-                             f"+ 🖨️ top-up print {tp_qty:,}")
-                elif dest_transfers:
-                    parts = [f"{t['source']} {int(t['qty']):,}" for t in dest_transfers]
-                    icon  = "✈️" if any(t['source'] == 'UK' for t in dest_transfers) else "📦"
-                    fill  = f"{icon} Transfer: {' + '.join(parts)}"
-                elif tp_qty:
+                parts = []
+                if dest_transfers:
+                    t_parts = [f"{t['source']} {int(t['qty']):,}" for t in dest_transfers]
+                    icon    = "✈️" if any(t['source'] == 'UK' for t in dest_transfers) else "📦"
+                    parts.append(f"{icon} Transfer: {' + '.join(t_parts)}")
+                if sup_qty:
+                    parts.append(f"📦 {sup_qty:,} supplier")
+                if tp_qty:
                     note = " (UK→AU blocked for cards)" if region == 'AU' and not sd['is_journal'] else ""
-                    fill = f"🖨️ Top-up print {tp_qty:,} direct to {region.replace('_',' ')}{note}"
+                    parts.append(f"🖨️ top-up print {tp_qty:,}{note}")
+                if parts:
+                    fill = " + ".join(parts)
                 else:
-                    fill = f"⚠️ Deficit {deficit:,} — unresolved (no transfer or print allocated)"
+                    fill = f"⚠️ Deficit {deficit:,} — unresolved"
             md += f"| {region.replace('_',' ')} | {dem:,} | {curr:,} | {deficit:,} | {fill} |\n"
 
         # UK outgoing note
@@ -666,18 +725,27 @@ def generate_report():
             buf_note = " + ".join(buf_parts) + f" = {int(reg_buffer):,}" if buf_parts else f"{int(reg_buffer):,}"
 
             # Incoming explanation
-            inc = sd['incoming'].get(region, 0)
-            curr = int(c['current'])
+            inc     = sd['incoming'].get(region, 0)
+            sup_in  = int(sd['supplier_alloc'].get(region, 0))
+            curr    = int(c['current'])
             if region == 'UK':
                 out = int(sd['outgoing_uk'])
                 stock_note = (f"*Starting stock: **{int(starting):,}** "
                               f"({curr:,} current − {out:,} transferred out)*")
-            elif inc > 0:
-                src = 'print run' if sd['is_printing'] and region in sd['print_alloc'] else 'transfer in'
-                stock_note = (f"*Starting stock: **{int(starting):,}** "
-                              f"({curr:,} current + {int(inc):,} {src})*")
             else:
-                stock_note = f"*Starting stock: **{int(starting):,}** (current stock only)*"
+                parts = [f"{curr:,} current"]
+                if inc > 0:
+                    src = 'print' if sd['is_printing'] and region in sd['print_alloc'] else 'transfer'
+                    if region in sd['top_up_print']:
+                        src = 'top-up print'
+                    parts.append(f"{int(inc):,} {src}")
+                if sup_in > 0:
+                    parts.append(f"{sup_in:,} supplier")
+                if len(parts) > 1:
+                    stock_note = (f"*Starting stock: **{int(starting):,}** "
+                                  f"({' + '.join(parts)})*")
+                else:
+                    stock_note = f"*Starting stock: **{int(starting):,}** (current stock only)*"
 
             md += f"#### {region.replace('_', ' ')}\n\n"
             md += stock_note + "\n\n"
