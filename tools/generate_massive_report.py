@@ -24,12 +24,227 @@ def max_or_zero(lst):
     return max(lst) if lst else 0
 
 
+# ── MARKDOWN HELPERS ────────────────────────────────────────────────────────
+
+def depletion_region_md(region, sd, forecast_months, buffer_months,
+                        month_label, month_short, days_in):
+    """Rolling depletion table for one channel of one SKU."""
+    c          = sd['ch'][region]
+    starting   = sd['start_stock'].get(region, 0)
+    reg_buffer = c['buffer']
+    monthly    = c['monthly']
+    curr       = int(c['current'])
+
+    # ── starting stock note ──
+    inc    = int(sd['incoming'].get(region, 0))
+    sup_in = int(sd['supplier_alloc'].get(region, 0))
+
+    if region == 'UK':
+        out = int(sd['outgoing_uk'])
+        note = (f"{curr:,} current"
+                + (f" − {out:,} transferred out" if out > 0 else ""))
+    elif region == 'US_Shopify':
+        out = int(sd['outgoing_us_hub'])
+        note = ("HBG+SLI+SAV+KCM: " + f"{curr:,}"
+                + (f" − {out:,} transferred to US FBA" if out > 0 else "")
+                + (f" + {int(sd['print_alloc'].get(region,0)):,} print" if region in sd['print_alloc'] else "")
+                + (f" + {int(sd['top_up_print'].get(region,0)):,} top-up print" if region in sd['top_up_print'] else ""))
+    elif region == 'CA_Shopify':
+        out = int(sd['outgoing_ca_hub'])
+        parts = [f"CA hub: {curr:,}"]
+        if out > 0:
+            parts.append(f"− {out:,} to CA FBA")
+        if sup_in > 0:
+            parts.append(f"+ {sup_in:,} supplier")
+        if region in sd['print_alloc']:
+            parts.append(f"+ {int(sd['print_alloc'][region]):,} print")
+        if region in sd['top_up_print']:
+            parts.append(f"+ {int(sd['top_up_print'][region]):,} top-up print")
+        note = " ".join(parts)
+    else:
+        parts = [f"{curr:,} current"]
+        if inc > 0:
+            if region in sd.get('print_alloc', {}):
+                src_label = 'print'
+            elif region in sd.get('top_up_print', {}):
+                src_label = 'top-up print'
+            else:
+                src_label = 'transfer + supplier' if sup_in > 0 and (inc - sup_in) > 0 else (
+                    'supplier' if sup_in > 0 else 'transfer')
+            parts.append(f"+ {inc:,} {src_label}")
+        note = " + ".join(parts) if len(parts) > 1 else parts[0]
+
+    buf_parts = []
+    for m in buffer_months:
+        bp = c['buf_parts'].get(m, {})
+        if bp.get('avg', 0) > 0:
+            buf_parts.append(f"{month_short[m]} avg {int(bp['avg']):,}")
+    buf_note = " + ".join(buf_parts) + f" = {int(reg_buffer):,}" if buf_parts else f"{int(reg_buffer):,}"
+
+    md  = f"#### {region.replace('_', ' ')}\n\n"
+    md += f"*Starting stock: **{int(starting):,}** ({note})*\n\n"
+    md += f"*30-day buffer target: **{int(reg_buffer):,} units** ({buf_note})*\n\n"
+    md += "| Month | Projected Sales | Ending Stock | vs Buffer | Weeks of Cover |\n"
+    md += "| :--- | ---: | ---: | ---: | ---: |\n"
+
+    cumulative = 0
+    for i, m in enumerate(forecast_months):
+        m_max = monthly[m]
+        cumulative += m_max
+        ending = starting - cumulative
+
+        next_i = i + 1
+        if next_i < len(forecast_months):
+            next_rate = monthly[forecast_months[next_i]]
+        else:
+            next_rate = reg_buffer / 3
+        woc_str = f"{ending / (next_rate / (days_in.get(m, 30) / 7)):.1f}w" if next_rate > 0 else "—"
+
+        vs_buf = int(round(ending)) - int(round(reg_buffer))
+        vs_str = f"+{vs_buf:,}" if vs_buf >= 0 else f"**{vs_buf:,} ⚠️**"
+        flag   = " ⚠️" if ending < 0 else ""
+        md += (f"| {month_label[m]} | {int(m_max):,} | "
+               f"**{int(ending):,}**{flag} | {vs_str} | {woc_str} |\n")
+
+    jan_end = starting - sum(monthly[m] for m in forecast_months)
+    status  = "✅" if jan_end >= reg_buffer * 0.9 else "⚠️ below target"
+    md += (f"\n> **Jan 2027 ending: {int(jan_end):,} units** · "
+           f"Buffer target: {int(reg_buffer):,} · {status}\n\n")
+    return md
+
+
+def stockout_md(sd, forecast_months, month_label):
+    """Shows what breaks for print-SKU channels if no print run happens."""
+    lines = []
+    for region, qty in sorted(sd['print_alloc'].items(), key=lambda x: -x[1]):
+        # no-print start = start_stock minus the print allocation
+        no_print_start = sd['start_stock'].get(region, 0) - qty
+        monthly = sd['ch'][region]['monthly']
+        buf     = sd['ch'][region]['buffer']
+        cumul   = 0
+        breach_m = stockout_m = None
+        for m in forecast_months:
+            cumul += monthly[m]
+            ending = no_print_start - cumul
+            if ending < buf and breach_m is None:
+                breach_m = m
+            if ending < 0 and stockout_m is None:
+                stockout_m = m
+                break
+        if stockout_m:
+            risk = f"🚨 Runs out of stock in **{month_label[stockout_m]}**"
+        elif breach_m:
+            risk = f"⚠️ Falls below 30-day safety buffer in **{month_label[breach_m]}**"
+        else:
+            risk = "Would survive through Jan (just barely — no buffer)"
+        lines.append(f"| {region.replace('_',' ')} | {int(no_print_start):,} | {int(qty):,} | {risk} |")
+
+    md  = "**Without this print run — what would break:**\n\n"
+    md += "| Channel | Stock Without Print | Print Adds | Consequence |\n"
+    md += "| :--- | ---: | ---: | :--- |\n"
+    md += "\n".join(lines) + "\n\n"
+    return md
+
+
+def hub_math_md(sd):
+    """Explicit hub surplus calculation for boss-level transparency."""
+    ch = sd['ch']
+
+    us_curr    = int(ch['US_Shopify']['current'])
+    us_dem     = int(ch['US_Shopify']['demand'])
+    us_buf     = int(ch['US_Shopify']['buffer'])
+    us_need    = us_dem + us_buf
+    us_sup     = int(sd['supplier_alloc'].get('US_Shopify', 0))
+    us_avail   = us_curr + us_sup
+    us_surplus = max(0, us_avail - us_need)
+    us_short   = max(0, us_need - us_avail)
+
+    ca_curr    = int(ch['CA_Shopify']['current'])
+    ca_dem     = int(ch['CA_Shopify']['demand'])
+    ca_buf     = int(ch['CA_Shopify']['buffer'])
+    ca_need    = ca_dem + ca_buf
+    ca_sup     = int(sd['supplier_alloc'].get('CA_Shopify', 0))
+    ca_avail   = ca_curr + ca_sup
+    ca_surplus = max(0, ca_avail - ca_need)
+    ca_short   = max(0, ca_need - ca_avail)
+
+    md  = "**Hub Surplus Calculation** *(Shopify demand + buffer is reserved first — only what remains can transfer to FBA)*\n\n"
+    md += "| | US Hubs (HBG / SLI / SAV / KCM) | CA Hub |\n"
+    md += "| :--- | ---: | ---: |\n"
+    md += f"| Current stock at hub | {us_curr:,} | {ca_curr:,} |\n"
+    if us_sup > 0 or ca_sup > 0:
+        md += f"| Incoming supplier stock | +{us_sup:,} | +{ca_sup:,} |\n"
+        md += f"| **Total available at hub** | **{us_avail:,}** | **{ca_avail:,}** |\n"
+    md += f"| US/CA Shopify demand May–Jan | {us_dem:,} | {ca_dem:,} |\n"
+    md += f"| 30-day Shopify buffer | {us_buf:,} | {ca_buf:,} |\n"
+    md += f"| **Total Shopify reserve** | **{us_need:,}** | **{ca_need:,}** |\n"
+
+    us_surplus_str = f"**+{us_surplus:,} surplus for FBA**" if us_surplus > 0 else f"**−{us_short:,} shortfall (hub needs a print too)**"
+    ca_surplus_str = f"**+{ca_surplus:,} surplus for FBA**" if ca_surplus > 0 else f"**−{ca_short:,} shortfall**"
+    md += f"| Result | {us_surplus_str} | {ca_surplus_str} |\n\n"
+    return md
+
+
+def situation_paragraph(sd, month_label, forecast_months):
+    """2–3 sentence plain-language summary of the SKU's inventory situation."""
+    peak_m     = max(forecast_months, key=lambda m: sd['g_monthly'][m]['max'])
+    peak_units = int(sd['g_monthly'][peak_m]['max'])
+    total_avail = int(sd['total_avail'])
+    total_need  = int(sd['total_need'])
+
+    if sd['is_printing']:
+        gap = total_need - total_avail
+
+        # Find the most urgent channel (biggest deficit relative to need)
+        worst_r, worst_pct = None, 0
+        for r, qty in sd['print_alloc'].items():
+            need = sd['ch'][r]['demand'] + sd['ch'][r]['buffer']
+            pct  = qty / need if need > 0 else 0
+            if pct > worst_pct:
+                worst_pct, worst_r = pct, r
+
+        # Find when the worst channel would go dark without prints
+        dark_month = None
+        if worst_r:
+            no_print_start = sd['start_stock'].get(worst_r, 0) - sd['print_alloc'].get(worst_r, 0)
+            cumul = 0
+            for m in forecast_months:
+                cumul += sd['ch'][worst_r]['monthly'][m]
+                if no_print_start - cumul < 0:
+                    dark_month = month_label[m]
+                    break
+
+        txt  = (f"Peak demand hits in **{month_label[peak_m]}** at **{peak_units:,} units** globally. "
+                f"Even counting all warehouses — hubs, FBA, UK, AU — we're **{gap:,} units short** "
+                f"of covering every channel through January with a 30-day buffer "
+                f"({total_avail:,} available vs {total_need:,} needed).")
+        if dark_month and worst_r:
+            txt += (f" Without a print run, **{worst_r.replace('_',' ')}** runs out of stock in "
+                    f"**{dark_month}**, right before or during peak season.")
+        txt += " New stock is ordered and shipped direct from the factory to each short channel."
+        return txt
+    else:
+        surplus = total_avail - total_need
+        txt = (f"Peak demand hits in **{month_label[peak_m]}** at **{peak_units:,} units** globally. "
+               f"We have **{total_avail:,} units** across all channels against a total need of "
+               f"**{total_need:,}** — a surplus of **{surplus:,} units**. No new print is required.")
+        if sd['outgoing_us_hub'] > 0 or sd['total_top_up'] > 0:
+            txt += (" However, the stock isn't in the right place: most of it sits in the UK or "
+                    "US hubs while FBA channels are light. The plan repositions hub surplus into "
+                    "FBA and uses small targeted top-up prints where transfer routes are blocked.")
+        else:
+            txt += " Existing stock covers all channels with no repositioning needed."
+        return txt
+
+
+# ── MAIN REPORT FUNCTION ─────────────────────────────────────────────────────
+
 def generate_report():
     with open(os.path.join(PROJECT_ROOT, '.tmp/data.json')) as f:
         data = json.load(f)
     sales = data.get('sales', [])
 
-    wh_ann    = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(float))))
+    wh_ann     = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(float))))
     global_ann = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 
     for row in sales:
@@ -69,10 +284,6 @@ def generate_report():
         for e in data.get('supplier_stock', [])
     }
 
-    # 7 modelled channels:
-    #   US_Shopify  = HBG+SLI+SAV+KCM combined  (sales warehouse: 'US')
-    #   CA_Shopify  = CA hub                     (sales warehouse: 'CA')
-    #   Amazon_CA_FBA is new — proxy demand from 'CA' warehouse history
     all_channels = ['Amazon_US_FBA', 'Amazon_CA_FBA', 'US_Shopify', 'CA_Shopify', 'UK', 'EU', 'AU']
 
     source_wh = {
@@ -121,7 +332,7 @@ def generate_report():
             a = avg(vals)
             total += a
             parts[m] = {'vals': vals, 'avg': a}
-        return total / len(buffer_months), parts   # 30-day avg, not sum
+        return total / len(buffer_months), parts
 
     # ── PRE-COMPUTE ALL SKU DATA ─────────────────────────────────────────────
 
@@ -142,9 +353,9 @@ def generate_report():
 
         ch = {}
         for region in all_channels:
-            swh             = source_wh[region]
-            dem             = wh_demand(sid, swh)
-            curr            = channel_stock(sid, region)
+            swh              = source_wh[region]
+            dem              = wh_demand(sid, swh)
+            curr             = channel_stock(sid, region)
             buf_total, buf_parts = wh_buffer(sid, swh)
             ch[region] = {
                 'source_wh': swh,
@@ -172,7 +383,7 @@ def generate_report():
         china_sup  = sup_detail.get(sid, {}).get('china',  0)
         g_stock    = sum(stock_idx.get(sid, {}).values()) + canada_sup + china_sup
 
-        # ── Step 1: UK transfers (UK→AU journals; UK→EU all) ──────────────────
+        # ── Step 1: UK transfers ───────────────────────────────────────────────
         uk_stock   = stock_idx.get(sid, {}).get('UK', 0)
         uk_surplus = max(0.0, uk_stock - ch['UK']['demand'] - ch['UK']['buffer'])
 
@@ -207,7 +418,7 @@ def generate_report():
             outgoing_uk    += pull
             uk_surplus     -= pull
 
-        # ── Step 2: Start stock after UK transfers ─────────────────────────────
+        # ── Step 2: Start stock ────────────────────────────────────────────────
         start_stock = {}
         for region in all_channels:
             if region == 'UK':
@@ -216,15 +427,12 @@ def generate_report():
                 start_stock[region] = ch[region]['current'] + incoming.get(region, 0)
 
         # ── Step 3: Supplier allocation ────────────────────────────────────────
-        # Canada supplier → CA Shopify first (Shopify priority), then CA FBA
-        # China supplier  → US FBA first, then other deficit channels
         supplier_alloc = defaultdict(float)
 
         if canada_sup > 0:
             pool = canada_sup
             for region in ['CA_Shopify', 'Amazon_CA_FBA']:
-                if pool <= 0:
-                    break
+                if pool <= 0: break
                 need = max(0.0, ch[region]['demand'] + ch[region]['buffer'] - start_stock[region])
                 if need > 0:
                     alloc = min(pool, need)
@@ -236,8 +444,7 @@ def generate_report():
         if china_sup > 0:
             pool = china_sup
             for region in ['Amazon_US_FBA', 'AU', 'EU', 'Amazon_CA_FBA', 'US_Shopify']:
-                if pool <= 0:
-                    break
+                if pool <= 0: break
                 need = max(0.0, ch[region]['demand'] + ch[region]['buffer'] - start_stock[region])
                 if need > 0:
                     alloc = min(pool, need)
@@ -246,16 +453,12 @@ def generate_report():
                     incoming[region]       += alloc
                     pool -= alloc
 
-        # ── Step 4: Global gap check ────────────────────────────────────────────
-        # All 7 channels are included: US_Shopify stock = HBG+SLI+SAV+KCM,
-        # CA_Shopify stock = CA hub. No separate hub_total needed.
+        # ── Step 4: Global gap check ───────────────────────────────────────────
         total_need  = sum(ch[r]['demand'] + ch[r]['buffer'] for r in all_channels)
         total_avail = sum(start_stock[r] for r in all_channels)
         is_globally_short = total_avail < total_need
 
-        # ── Step 4a: PRINT MODE ─────────────────────────────────────────────────
-        # Not enough stock globally — print to cover each channel's specific deficit.
-        # Prints ship direct from factory to destination; no hub→FBA transfers.
+        # ── Step 4a: Print mode ────────────────────────────────────────────────
         print_alloc = {}
         if is_globally_short:
             for region in all_channels:
@@ -269,9 +472,7 @@ def generate_report():
         total_print = sum(print_alloc.values())
         is_printing  = total_print > 0
 
-        # ── Step 4b: REPOSITION MODE ────────────────────────────────────────────
-        # Globally sufficient — transfer hub SURPLUS (above Shopify demand+buffer) to FBA.
-        # Hubs keep enough for all Shopify demand + 30-day buffer; only the excess moves.
+        # ── Step 4b: Reposition mode ───────────────────────────────────────────
         outgoing_us_hub = 0.0
         outgoing_ca_hub = 0.0
 
@@ -282,7 +483,6 @@ def generate_report():
             ca_shopify_need = ch['CA_Shopify']['demand'] + ch['CA_Shopify']['buffer']
             ca_hub_surplus  = max(0.0, start_stock['CA_Shopify'] - ca_shopify_need)
 
-            # US hub surplus → Amazon US FBA
             us_fba_gap = max(0.0, ch['Amazon_US_FBA']['demand'] + ch['Amazon_US_FBA']['buffer']
                              - start_stock['Amazon_US_FBA'])
             if us_fba_gap > 0 and us_hub_surplus > 0:
@@ -290,7 +490,7 @@ def generate_report():
                 transfers.append({
                     'source': 'US Hub', 'dest': 'Amazon_US_FBA', 'qty': pull,
                     'reason': (
-                        f"US hubs (HBG/SLI/SAV/KCM) have {int(start_stock['US_Shopify']):,}; "
+                        f"US hubs have {int(start_stock['US_Shopify']):,}; "
                         f"Shopify needs {int(us_shopify_need):,} (demand + buffer); "
                         f"surplus {int(us_hub_surplus):,}; US FBA gap {int(us_fba_gap):,}")
                 })
@@ -300,7 +500,6 @@ def generate_report():
                 outgoing_us_hub              += pull
                 us_hub_surplus               -= pull
 
-            # CA hub surplus → Amazon CA FBA
             ca_fba_gap = max(0.0, ch['Amazon_CA_FBA']['demand'] + ch['Amazon_CA_FBA']['buffer']
                              - start_stock['Amazon_CA_FBA'])
             if ca_fba_gap > 0 and ca_hub_surplus > 0:
@@ -317,8 +516,7 @@ def generate_report():
                 incoming['Amazon_CA_FBA']    += pull
                 outgoing_ca_hub              += pull
 
-        # ── Step 5: Top-up prints ───────────────────────────────────────────────
-        # Globally sufficient but a channel still has a gap (blocked route or no hub surplus).
+        # ── Step 5: Top-up prints ──────────────────────────────────────────────
         top_up_print = {}
         if not is_globally_short:
             for region in all_channels:
@@ -350,155 +548,199 @@ def generate_report():
         }
 
     # ── REPORT STATS ────────────────────────────────────────────────────────
-    printing_skus     = [s for s in skus if sku_data[s['sku_id']]['is_printing']]
-    total_print_units = sum(sku_data[s['sku_id']]['total_print'] for s in printing_skus)
-    top_up_skus       = [s for s in skus if sku_data[s['sku_id']]['total_top_up'] > 0]
-    total_top_up_all  = sum(sku_data[s['sku_id']]['total_top_up'] for s in top_up_skus)
-    total_transfers   = sum(len(sku_data[s['sku_id']]['transfers']) for s in skus)
+    printing_skus = [s for s in skus if sku_data[s['sku_id']]['is_printing']]
+    top_up_skus   = [s for s in skus if sku_data[s['sku_id']]['total_top_up'] > 0]
 
     # ── BUILD MARKDOWN ───────────────────────────────────────────────────────
 
     md  = "# Inventory Master Plan: May 2026 – January 2027\n\n"
-    md += "*Generated: May 3, 2026 · 9-month active period + 30-day carry-over buffer · 8 SKUs · 10 warehouses*\n\n"
+    md += "*Generated: May 3, 2026 · 8 SKUs · 7 channels · 9-month selling period + 30-day carry-over buffer*\n\n"
     md += "---\n\n"
 
     # ── EXECUTIVE SUMMARY ───────────────────────────────────────────────────
     md += "## Executive Summary\n\n"
-    md += ("This plan covers every SKU from **May 2026 through January 2027** across all channels — "
-           "Amazon US FBA, Amazon CA FBA, US Shopify (HBG/SLI/SAV/KCM), CA Shopify, UK, EU, and AU. "
-           "US hubs reserve stock for Shopify demand first; only the surplus above Shopify needs can "
-           "transfer to FBA. Each channel ends January with 30 days of carry-over stock.\n\n")
 
-    md += "### What Needs to Happen Now\n\n"
+    md += ("We're entering the 9-month window from May through January — our most important "
+           "selling period, with November and December accounting for the majority of annual volume. "
+           "This plan models demand for all 7 channels (Amazon US FBA, Amazon CA FBA, US Shopify, "
+           "CA Shopify, UK, EU, AU), sets a 30-day safety buffer for each, and determines exactly "
+           "what stock needs to move and where — before peak season starts.\n\n"
+           "**The core rule:** US hubs (HBG/SLI/SAV/KCM) and the CA hub serve Shopify channels "
+           "first. Only stock above Shopify needs can transfer to FBA. If total stock is still "
+           "short after counting everything, we print — and new prints ship direct from the "
+           "factory to the destination, never routed through a hub.\n\n")
 
+    md += "### Actions Required\n\n"
+
+    # Print narratives
     if printing_skus:
-        md += "**🖨️ New Print Orders:**\n\n"
+        md += "#### 🖨️ Print Orders\n\n"
         for s in printing_skus:
-            sd = sku_data[s['sku_id']]
-            alloc_str = ', '.join(
-                f"{qty:,} → {dest.replace('_',' ')}"
+            sd  = sku_data[s['sku_id']]
+            gap = int(sd['total_need']) - int(sd['total_avail'])
+            peak_m = max(forecast_months, key=lambda m: sd['g_monthly'][m]['max'])
+
+            dest_lines = '\n'.join(
+                f"  - **{qty:,} units** → {dest.replace('_',' ')} *(direct from printer)*"
                 for dest, qty in sd['print_alloc'].items()
             )
-            md += f"- **{sd['name']}**: print **{sd['total_print']:,} units** ({alloc_str}) — ship direct from printer\n"
-        md += "\n"
+            md += (f"**{sd['name']} — {sd['total_print']:,} units**\n"
+                   f"All channels combined fall **{gap:,} units short** of covering "
+                   f"May–January demand plus a 30-day buffer "
+                   f"({int(sd['total_avail']):,} available vs {int(sd['total_need']):,} needed). "
+                   f"Peak month is {month_label[peak_m]} at "
+                   f"{int(sd['g_monthly'][peak_m]['max']):,} units globally. Printing:\n"
+                   f"{dest_lines}\n\n")
 
+    # Transfer narratives
     hub_transfer_skus = [s for s in skus if not sku_data[s['sku_id']]['is_printing']
                          and any(t['source'] in ('US Hub', 'CA Hub')
                                  for t in sku_data[s['sku_id']]['transfers'])]
     if hub_transfer_skus:
-        md += "**📦 Hub→FBA Transfers** *(no print run needed — reposition hub surplus to FBA)*:\n\n"
+        md += "#### 📦 Hub→FBA Transfers *(reposition surplus, no print needed)*\n\n"
         for s in hub_transfer_skus:
             sd = sku_data[s['sku_id']]
-            t_str = ', '.join(
-                f"{int(t['qty']):,} {t['source']}→{t['dest'].replace('_',' ')}"
+            surplus = int(sd['total_avail']) - int(sd['total_need'])
+            t_lines = '\n'.join(
+                f"  - {int(t['qty']):,} units: {t['source']} → {t['dest'].replace('_',' ')}"
                 for t in sd['transfers'] if t['source'] in ('US Hub', 'CA Hub')
             )
-            md += f"- **{sd['name']}**: {t_str}\n"
-        md += "\n"
+            md += (f"**{sd['name']}** — globally covered (+{surplus:,} units ahead), "
+                   f"but FBA channels are light. Transferring hub surplus:\n{t_lines}\n\n")
 
-    intl_skus = [s for s in skus if any(t['source'] == 'UK' for t in sku_data[s['sku_id']]['transfers'])]
-    if intl_skus:
-        md += "**✈️ International Transfers** *(UK surplus → AU/EU)*:\n\n"
-        for s in intl_skus:
-            sd = sku_data[s['sku_id']]
-            t_str = ', '.join(
-                f"{int(t['qty']):,} UK→{t['dest'].replace('_',' ')}"
-                for t in sd['transfers'] if t['source'] == 'UK'
-            )
-            md += f"- **{sd['name']}**: {t_str}\n"
-        md += "\n"
-
+    # Top-up narratives
     if top_up_skus:
-        md += "**🖨️ Top-Up Prints** *(blocked routes or no hub surplus for specific channels)*:\n\n"
+        md += "#### 🖨️ Top-Up Prints *(targeted fills where transfer routes are blocked)*\n\n"
         for s in top_up_skus:
             sd = sku_data[s['sku_id']]
-            tp_str = ', '.join(
-                f"{qty:,} → {dest.replace('_',' ')}"
+            tp_lines = '\n'.join(
+                f"  - **{qty:,} units** → {dest.replace('_',' ')}"
                 for dest, qty in sd['top_up_print'].items()
             )
-            md += f"- **{sd['name']}**: {tp_str}\n"
-        md += "\n"
+            md += f"**{sd['name']}:**\n{tp_lines}\n\n"
 
-    md += "### Plan at a Glance\n\n"
-    md += "| | |\n| :--- | :--- |\n"
-    md += f"| Selling period | May 2026 – Jan 2027 (9 months) |\n"
-    md += f"| Channels modelled | Amazon US FBA, Amazon CA FBA, US Shopify, CA Shopify, UK, EU, AU |\n"
-    md += f"| Buffer carry-over | 30 days (Feb 2027 average) |\n"
-    md += f"| Full print runs | {len(printing_skus)} SKUs · {int(total_print_units):,} units total |\n"
-    md += f"| Top-up prints | {len(top_up_skus)} SKUs · {int(total_top_up_all):,} units |\n"
-    md += f"| Transfer moves | {total_transfers} |\n"
-    md += ("| Hub→FBA rule | Hubs reserve Shopify demand + 30-day buffer first · "
-           "only surplus transfers to FBA |\n")
-    md += ("| Print rule | If printing: ship direct from factory · "
-           "No hub→FBA transfers for that SKU |\n\n")
-    md += "---\n\n"
+    # International transfers
+    intl_skus = [s for s in skus if any(t['source'] == 'UK' for t in sku_data[s['sku_id']]['transfers'])]
+    if intl_skus:
+        md += "#### ✈️ International Transfers *(UK surplus → AU/EU)*\n\n"
+        for s in intl_skus:
+            sd = sku_data[s['sku_id']]
+            t_lines = '\n'.join(
+                f"  - {int(t['qty']):,} units: UK → {t['dest'].replace('_',' ')}"
+                for t in sd['transfers'] if t['source'] == 'UK'
+            )
+            md += f"**{sd['name']}:**\n{t_lines}\n\n"
+
+    # Summary table
+    md += "### Summary Table\n\n"
+    md += "| SKU | Decision | Units | Notes |\n"
+    md += "| :--- | :--- | ---: | :--- |\n"
+    for s in skus:
+        sid = s['sku_id']
+        sd  = sku_data[sid]
+        if sd['is_printing']:
+            decision = "🖨️ Print run"
+            units    = sd['total_print']
+            gap      = int(sd['total_need']) - int(sd['total_avail'])
+            notes    = f"Globally short {gap:,} units"
+        elif sd['total_top_up'] > 0 and any(t['source'] in ('US Hub','CA Hub') for t in sd['transfers']):
+            decision = "📦 Transfer + 🖨️ top-up print"
+            units    = sd['total_top_up'] + int(sum(t['qty'] for t in sd['transfers'] if t['source'] in ('US Hub','CA Hub')))
+            notes    = f"{int(sum(t['qty'] for t in sd['transfers'] if t['source'] in ('US Hub','CA Hub'))):,} transfer · {sd['total_top_up']:,} top-up print"
+        elif sd['total_top_up'] > 0:
+            decision = "🖨️ Top-up print"
+            units    = sd['total_top_up']
+            notes    = "Blocked routes"
+        elif any(t['source'] in ('US Hub','CA Hub') for t in sd['transfers']):
+            decision = "📦 Hub→FBA transfer"
+            units    = int(sum(t['qty'] for t in sd['transfers'] if t['source'] in ('US Hub','CA Hub')))
+            notes    = "Globally sufficient"
+        else:
+            decision = "✅ No action needed"
+            units    = 0
+            notes    = "All channels covered by current stock"
+        uk_t = int(sum(t['qty'] for t in sd['transfers'] if t['source'] == 'UK'))
+        if uk_t > 0:
+            notes += f" · {uk_t:,} UK→intl"
+        md += f"| {sd['name']} | {decision} | {units:,} | {notes} |\n"
+
+    md += "\n---\n\n"
 
     # ── SECTION 1: METHODOLOGY ──────────────────────────────────────────────
-    md += "## Section 1: How the Numbers Were Calculated\n\n"
+    md += "## Section 1: How the Numbers Were Built\n\n"
 
-    md += "### The Two Questions\n\n"
-    md += ("1. **How much will we sell?** — per channel, per month, May 2026–Jan 2027\n"
-           "2. **How much must be left over in January?** — 30-day buffer so we never hit zero\n\n")
-
-    md += "### Demand: Use the Maximum, Not the Average\n\n"
-    md += ("For each channel and each month, we compare 2024 and 2025 actual sales and take "
-           "the **higher number**. Planning to the max means we're ready for a strong Q4.\n\n")
+    md += ("### Demand Forecast: Always Plan for the Worst Month We've Seen\n\n"
+           "For each channel and each month (May through January), we look at 2024 and 2025 "
+           "actuals and take the **higher number**. If October 2024 was bigger than October 2025, "
+           "we plan for October 2024. This means we're prepared for a strong Q4 — "
+           "not just an average one.\n\n")
 
     ex    = skus[0]
     ex_sd = sku_data[ex['sku_id']]
     oct_d = ex_sd['g_monthly'][10]
-    md += f"**Example — {ex_sd['name']}, October (global):**\n\n"
-    md += "| | Units |\n| :--- | ---: |\n"
-    md += f"| 2024 October | {int(oct_d['2024']):,} |\n"
-    md += f"| 2025 October | {int(oct_d['2025']):,} |\n"
-    md += f"| **We plan for** | **{int(oct_d['max']):,}** ← the higher of the two |\n\n"
+    nov_d = ex_sd['g_monthly'][11]
+    dec_d = ex_sd['g_monthly'][12]
+    md += f"*Example — {ex_sd['name']} Q4:*\n\n"
+    md += "| Month | 2024 | 2025 | Plan Uses |\n| :--- | ---: | ---: | ---: |\n"
+    md += (f"| Oct | {int(oct_d['2024']):,} | {int(oct_d['2025']):,} | "
+           f"**{int(oct_d['max']):,}** ← {'2024' if oct_d['2024'] >= oct_d['2025'] else '2025'} |\n")
+    md += (f"| Nov | {int(nov_d['2024']):,} | {int(nov_d['2025']):,} | "
+           f"**{int(nov_d['max']):,}** ← {'2024' if nov_d['2024'] >= nov_d['2025'] else '2025'} |\n")
+    md += (f"| Dec | {int(dec_d['2024']):,} | {int(dec_d['2025']):,} | "
+           f"**{int(dec_d['max']):,}** ← {'2024' if dec_d['2024'] >= dec_d['2025'] else '2025'} |\n\n")
 
-    md += "### Safety Buffer: 30 Days of Stock After January\n\n"
-    md += ("The buffer is the average monthly sales from February, March, and April — "
-           "one month's worth of stock that must still be on hand February 1st.\n\n")
+    md += ("### The 30-Day Safety Buffer\n\n"
+           "We don't plan to hit zero in January. The buffer is the average of what each "
+           "channel sells in February, March, and April — one month's worth of stock that "
+           "must still be sitting in the warehouse on February 1st, before the next "
+           "replenishment arrives. This prevents stockouts in the gap between January and "
+           "whenever the next order lands.\n\n")
 
-    md += "### How the Hub→FBA Decision Works\n\n"
-    md += ("US hubs (HBG, SLI, SAV, KCM) serve US Shopify primarily. "
-           "CA hub serves CA Shopify. The rule:\n\n"
-           "1. Each hub reserves enough stock for its own **Shopify demand + 30-day buffer**.\n"
-           "2. Any stock above that reserve is **surplus** — it can transfer to FBA.\n"
-           "3. If the total stock across ALL channels (including hub surplus) is still not "
-           "enough to cover all channel needs, a **print run** is triggered. "
-           "In print mode, stock ships direct from the factory to FBA — no hub transfers.\n\n")
+    md += ("### The Print vs. Transfer Decision\n\n"
+           "For each SKU, we ask one question first: **does total stock across all channels "
+           "cover total demand + buffers?**\n\n"
+           "- **Yes (globally sufficient):** No print run needed. We reposition hub surplus "
+           "to FBA instead. Hubs reserve their Shopify demand + buffer; only the excess moves.\n"
+           "- **No (globally short):** A print run is ordered. New stock ships direct from "
+           "the factory to each short channel — it never routes through a hub first.\n\n"
+           "This is a binary decision per SKU. We don't mix print runs with hub→FBA transfers "
+           "for the same SKU. If we're printing, FBA gets stock from the printer. "
+           "If we're not printing, FBA gets stock from hub surplus.\n\n")
 
-    md += "### Channels and Their Stock Sources\n\n"
-    md += "| Channel | Stock Comes From | Demand Proxy |\n| :--- | :--- | :--- |\n"
-    md += "| Amazon US FBA | Amazon_US_FBA warehouse | Amazon_US_FBA sales history |\n"
-    md += "| Amazon CA FBA | Amazon_CA_FBA warehouse (new — 0 stock) | CA Shopify history (proxy) |\n"
-    md += "| US Shopify | HBG + SLI + SAV + KCM combined | 'US' warehouse sales history |\n"
-    md += "| CA Shopify | CA hub | 'CA' warehouse sales history |\n"
-    md += "| UK | UK warehouse | UK sales history |\n"
-    md += "| EU | EU warehouse | EU sales history |\n"
-    md += "| AU | AU warehouse | AU sales history |\n\n"
+    md += ("### Routing Rules\n\n"
+           "| Route | Allowed? | Why |\n| :--- | :--- | :--- |\n"
+           "| UK → AU | ✅ Journals only | Cards can't use this route |\n"
+           "| UK → EU | ✅ All SKUs | |\n"
+           "| US Hub surplus → US FBA | ✅ If no print run | Shopify reserve must be maintained |\n"
+           "| CA Hub surplus → CA FBA | ✅ If no print run | Shopify reserve must be maintained |\n"
+           "| New print → hub → FBA | ❌ | Too slow; prints go direct |\n"
+           "| Canada supplier → US channels | ❌ | Restricted to CA channels only |\n\n")
 
-    md += "### Routing Constraints\n\n"
-    md += "| Route | Allowed? | Notes |\n| :--- | :--- | :--- |\n"
-    md += "| UK → AU | ✅ Journals only | Cards blocked |\n"
-    md += "| UK → EU | ✅ All SKUs | |\n"
-    md += "| US Hub surplus → US FBA | ✅ If no print run | Shopify needs reserved first |\n"
-    md += "| CA Hub surplus → CA FBA | ✅ If no print run | Shopify needs reserved first |\n"
-    md += "| New print → hub → FBA | ❌ | Prints ship direct to destination |\n"
-    md += "| Canada supplier → US channels | ❌ | Canada supplier: CA channels only |\n\n"
     md += "---\n\n"
 
-    # ── SECTION 2: DEMAND BREAKDOWN ─────────────────────────────────────────
-    md += "## Section 2: Full Demand Breakdown by SKU\n\n"
+    # ── SECTION 2: SKU-BY-SKU ANALYSIS ──────────────────────────────────────
+    md += "## Section 2: SKU-by-SKU Analysis\n\n"
+    md += ("Each SKU section covers: the situation in plain language, the demand forecast, "
+           "hub surplus math, the specific decision made, what would have happened without "
+           "that decision, and the full rolling depletion forecast by channel.\n\n")
+
+    consumer_display = ['Amazon_US_FBA', 'Amazon_CA_FBA', 'US_Shopify', 'CA_Shopify', 'UK', 'AU']
 
     for sku in skus:
         sid  = sku['sku_id']
         sd   = sku_data[sid]
         name = sd['name']
 
-        md += f"### {name} `{sid}`\n\n"
+        md += f"---\n\n### {name} `{sid}`\n\n"
 
-        # Global monthly demand table
-        md += "**Monthly Demand Forecast (Global — all channels combined)**\n\n"
-        md += "| Month | 2024 | 2025 | ✅ Max Used | Running Total |\n"
+        # Situation paragraph
+        md += situation_paragraph(sd, month_label, forecast_months) + "\n\n"
+
+        # Monthly demand table
+        md += "#### Monthly Demand Forecast\n\n"
+        md += ("*Max of 2024 and 2025 actuals taken for each month. "
+               "The higher year is used so we plan for the strongest Q4 we've seen.*\n\n")
+        md += "| Month | 2024 Actual | 2025 Actual | Plan Uses | Cumulative |\n"
         md += "| :--- | ---: | ---: | ---: | ---: |\n"
         running = 0
         for m in forecast_months:
@@ -506,37 +748,50 @@ def generate_report():
             running += r['max']
             y24 = f"{int(r['2024']):,}" if r['2024'] > 0 else "—"
             y25 = f"{int(r['2025']):,}" if r['2025'] > 0 else "—"
-            chosen  = f"**{int(r['max']):,}**" if r['max'] > 0 else "—"
+            yr_tag = ""
             if r['2024'] > r['2025'] and r['2024'] > 0:
-                chosen += " ← 2024"
+                yr_tag = " ← 2024"
             elif r['2025'] > r['2024'] and r['2025'] > 0:
-                chosen += " ← 2025"
+                yr_tag = " ← 2025"
+            chosen = f"**{int(r['max']):,}**{yr_tag}" if r['max'] > 0 else "—"
             md += f"| {month_label[m]} | {y24} | {y25} | {chosen} | {int(running):,} |\n"
         md += f"| **9-Month Total** | | | | **{int(sd['g_demand']):,}** |\n\n"
 
-        # Global buffer
-        md += "**30-Day Buffer (Feb–Apr average)**\n\n"
-        md += "| Month | 2024 | 2025 | Average |\n| :--- | ---: | ---: | ---: |\n"
+        # Buffer
+        md += "#### 30-Day Safety Buffer Calculation\n\n"
+        md += ("*Average of Feb, Mar, Apr monthly sales — one month's worth of stock "
+               "that must remain at end of January.*\n\n")
+        md += "| Month | 2024 | 2025 | Monthly Average |\n| :--- | ---: | ---: | ---: |\n"
         for m in buffer_months:
             bd   = sd['g_buf_parts'][m]
             y24b = int(global_ann[sid].get(2024, {}).get(m, 0))
             y25b = int(global_ann[sid].get(2025, {}).get(m, 0))
             y24s = f"{y24b:,}" if y24b > 0 else "—"
             y25s = f"{y25b:,}" if y25b > 0 else "—"
-            md += f"| {month_short[m]} | {y24s} | {y25s} | **{int(bd['avg']):,}** |\n"
-        md += f"| **30-day buffer (avg)** | | | **{int(sd['g_buf_total']):,}** |\n\n"
+            md += f"| {month_short[m]} | {y24s} | {y25s} | {int(bd['avg']):,} |\n"
+        md += f"| **30-day buffer (avg of 3 months)** | | | **{int(sd['g_buf_total']):,}** |\n\n"
 
-        # Global gap summary
-        shortfall = int(sd['total_need']) - int(sd['total_avail'])
-        gap_label = (f"⚠️ **Globally short by {shortfall:,} units** → print run triggered"
-                     if sd['is_printing']
-                     else f"✅ **Globally sufficient** — total stock {int(sd['total_avail']):,} ≥ "
-                          f"total need {int(sd['total_need']):,}")
-        md += f"**Global Stock Check:** {gap_label}\n\n"
+        # Global stock check
+        gap_or_surplus = int(sd['total_need']) - int(sd['total_avail'])
+        if sd['is_printing']:
+            gap_box = (f"> ⚠️ **Globally short: {gap_or_surplus:,} units.** "
+                       f"Total stock across all channels: {int(sd['total_avail']):,} · "
+                       f"Total need (demand + buffer): {int(sd['total_need']):,} · "
+                       f"**Print run triggered.**\n\n")
+        else:
+            surplus = -gap_or_surplus
+            gap_box = (f"> ✅ **Globally sufficient: +{surplus:,} units ahead.** "
+                       f"Total stock: {int(sd['total_avail']):,} · "
+                       f"Total need: {int(sd['total_need']):,} · "
+                       f"**No print run needed.**\n\n")
+        md += gap_box
 
-        # Per-channel stock check
-        md += "**Per-Channel Stock Check**\n\n"
-        md += "| Channel | 9-Mo Demand | Buffer | Need | Current Stock | How It's Filled |\n"
+        # Hub surplus analysis
+        md += hub_math_md(sd)
+
+        # Per-channel breakdown
+        md += "#### Per-Channel Stock Check\n\n"
+        md += "| Channel | 9-Mo Demand | 30-Day Buffer | Total Need | Stock on Hand | Decision |\n"
         md += "| :--- | ---: | ---: | ---: | ---: | :--- |\n"
         for region in all_channels:
             c = sd['ch'][region]
@@ -556,9 +811,8 @@ def generate_report():
 
             sup_qty = int(sd['supplier_alloc'].get(region, 0))
             tp_qty  = sd['top_up_print'].get(region, 0)
-            dest_transfers = [t for t in sd['transfers'] if t['dest'] == region]
-
-            final_stock = int(sd['start_stock'].get(region, 0))
+            dest_xf = [t for t in sd['transfers'] if t['dest'] == region]
+            final   = int(sd['start_stock'].get(region, 0))
 
             if region in sd['print_alloc']:
                 qty  = sd['print_alloc'][region]
@@ -566,121 +820,143 @@ def generate_report():
                 parts = []
                 if sup_qty:
                     parts.append(f"📦 {sup_qty:,} supplier")
-                parts.append(f"🖨️ print {qty:,} direct")
-                fill = f"{' + '.join(parts)}{note}"
+                parts.append(f"🖨️ Print {qty:,} direct")
+                decision = ", ".join(parts) + note
             elif region == 'US_Shopify' and sd['outgoing_us_hub'] > 0:
-                fill = (f"✅ Sufficient · {int(sd['outgoing_us_hub']):,} surplus → US FBA "
-                        f"(Shopify keeps {int(sd['start_stock']['US_Shopify']):,})")
+                decision = (f"Reserve {need:,} for Shopify · "
+                            f"Transfer {int(sd['outgoing_us_hub']):,} surplus → US FBA")
             elif region == 'CA_Shopify' and sd['outgoing_ca_hub'] > 0:
-                fill = (f"✅ Sufficient · {int(sd['outgoing_ca_hub']):,} surplus → CA FBA "
-                        f"(CA Shopify keeps {int(sd['start_stock']['CA_Shopify']):,})")
-            elif final_stock >= need:
-                fill = "✅ Sufficient stock"
+                decision = (f"Reserve {need:,} for Shopify · "
+                            f"Transfer {int(sd['outgoing_ca_hub']):,} surplus → CA FBA")
+            elif final >= need:
+                decision = "✅ Covered by current stock"
                 if sup_qty:
-                    fill += f" (incl. {sup_qty:,} supplier)"
+                    decision += f" + {sup_qty:,} supplier"
             else:
                 parts = []
-                if dest_transfers:
-                    t_parts = [f"{t['source']} {int(t['qty']):,}" for t in dest_transfers]
-                    icon    = "✈️" if any(t['source'] == 'UK' for t in dest_transfers) else "📦"
-                    parts.append(f"{icon} Transfer: {' + '.join(t_parts)}")
+                if dest_xf:
+                    t_str = " + ".join(f"{t['source']} {int(t['qty']):,}" for t in dest_xf)
+                    parts.append(f"📦 Transfer: {t_str}")
                 if sup_qty:
                     parts.append(f"📦 {sup_qty:,} supplier")
                 if tp_qty:
-                    note = " (UK→AU blocked for cards)" if region == 'AU' and not sd['is_journal'] else ""
-                    parts.append(f"🖨️ top-up print {tp_qty:,}{note}")
-                fill = " + ".join(parts) if parts else f"⚠️ Gap {need - final_stock:,} — unresolved"
+                    note = " (UK→AU blocked)" if region == 'AU' and not sd['is_journal'] else ""
+                    parts.append(f"🖨️ Top-up print {tp_qty:,}{note}")
+                decision = " + ".join(parts) if parts else f"⚠️ Gap {need - final:,} unresolved"
 
-            md += f"| {region.replace('_',' ')} | {dem:,} | {buf:,} | {need:,} | {curr_label} | {fill} |\n"
+            md += f"| {region.replace('_',' ')} | {dem:,} | {buf:,} | {need:,} | {curr_label} | {decision} |\n"
 
         if sd['outgoing_uk'] > 0:
             uk_end = int(stock_idx.get(sid, {}).get('UK', 0)) - int(sd['outgoing_uk'])
-            uk_dem = int(sd['ch']['UK']['demand'])
-            md += (f"\n> **UK stock:** {int(stock_idx.get(sid,{}).get('UK',0)):,} current "
+            md += (f"\n> **UK:** {int(stock_idx.get(sid,{}).get('UK',0)):,} current "
                    f"− {int(sd['outgoing_uk']):,} transferred = **{uk_end:,} remaining** "
-                   f"vs UK demand {uk_dem:,} → "
-                   f"{'✅ covered' if uk_end >= uk_dem else '⚠️ short'}\n")
+                   f"vs UK demand {int(sd['ch']['UK']['demand']):,} · "
+                   f"{'✅ covered' if uk_end >= sd['ch']['UK']['demand'] else '⚠️ short'}\n\n")
 
+        # Decision summary + stockout analysis (for print SKUs)
         if sd['is_printing']:
-            alloc_detail = ' + '.join(
-                f"{qty:,} to {dest.replace('_',' ')}" for dest, qty in sd['print_alloc'].items()
-            )
-            md += f"\n**→ PRINT ORDER: {sd['total_print']:,} units** ({alloc_detail})\n\n"
+            alloc_str = ' + '.join(f"{qty:,} to {d.replace('_',' ')}"
+                                   for d, qty in sd['print_alloc'].items())
+            md += (f"> **Decision: Print {sd['total_print']:,} units** ({alloc_str}) "
+                   f"· ship direct from factory\n\n")
+            md += stockout_md(sd, forecast_months, month_label)
         elif sd['total_top_up'] > 0:
-            tp_detail = ' + '.join(
-                f"{qty:,} to {dest.replace('_',' ')}" for dest, qty in sd['top_up_print'].items()
-            )
-            md += (f"\n**→ No full print run** — hub surplus covers FBA · "
-                   f"Top-up print: **{sd['total_top_up']:,} units** ({tp_detail})\n\n")
+            tp_str = ' + '.join(f"{qty:,} to {d.replace('_',' ')}"
+                                for d, qty in sd['top_up_print'].items())
+            md += (f"> **Decision: No full print run.** Hub surplus transfers proceed · "
+                   f"Top-up prints: {tp_str}\n\n")
         else:
-            md += f"\n**→ No print order needed** — transfers reposition existing stock\n\n"
+            xf_str = '; '.join(
+                f"{int(t['qty']):,} {t['source']}→{t['dest'].replace('_',' ')}"
+                for t in sd['transfers'] if t['source'] in ('US Hub','CA Hub')
+            ) or "None"
+            md += f"> **Decision: No print run.** Transfers: {xf_str}\n\n"
 
-        md += "---\n\n"
+        # Rolling depletion per channel
+        md += "#### Rolling Depletion Forecast\n\n"
+        md += ("*Starting stock = current inventory after all transfers and print runs arrive. "
+               "Each month we subtract max projected sales. "
+               "The goal: end January above the 30-day buffer line.*\n\n")
 
-    # ── SECTION 3: PRINT ORDERS ──────────────────────────────────────────────
-    md += "## Section 3: New Print Orders\n\n"
+        for region in consumer_display:
+            c = sd['ch'][region]
+            if c['demand'] == 0 and sd['start_stock'].get(region, 0) == 0:
+                continue
+            md += depletion_region_md(region, sd, forecast_months, buffer_months,
+                                      month_label, month_short, days_in)
+
+    md += "---\n\n"
+
+    # ── SECTION 3: PRINT ORDER INSTRUCTIONS ─────────────────────────────────
+    md += "## Section 3: Print Order Instructions\n\n"
+    md += ("New print runs ship **direct from the printer to the destination warehouse**. "
+           "Do not route prints through a hub — prints going to FBA should be addressed "
+           "directly to FBA; prints going to AU should go to the AU warehouse.\n\n"
+           "Place orders immediately. Standard lead times (4–8 weeks production + 4–6 weeks "
+           "transit) mean orders placed in May arrive July–August, giving time for FBA "
+           "inbound processing before peak season.\n\n")
 
     if not printing_skus:
-        md += ("✅ **No new print orders required.** All channels can be covered by "
-               "repositioning existing hub surplus via transfers.\n\n")
+        md += "✅ **No full print runs required** for this planning period.\n\n"
     else:
-        md += ("The following SKUs need new units printed and shipped **direct from the "
-               "printer to the destination** — do not route through hubs.\n\n")
         for s in printing_skus:
             sid = s['sku_id']
             sd  = sku_data[sid]
-            md += f"### 🖨️ {sd['name']} — Print {sd['total_print']:,} Units\n\n"
-            md += "| Destination | Units | Current Stock | 9-Mo Need | Deficit | Math |\n"
-            md += "| :--- | ---: | ---: | ---: | ---: | :--- |\n"
+            gap = int(sd['total_need']) - int(sd['total_avail'])
+
+            md += f"### 🖨️ {sd['name']} — {sd['total_print']:,} Units\n\n"
+            md += f"*Reason: globally short by {gap:,} units.*\n\n"
+            md += "| Destination | Units to Print | Current Stock | Total Need | Gap Filled |\n"
+            md += "| :--- | ---: | ---: | ---: | :--- |\n"
             for dest, qty in sd['print_alloc'].items():
-                c       = sd['ch'][dest]
-                curr    = int(c['current'])
-                need    = int(c['demand'] + c['buffer'])
-                deficit = int(c['deficit'])
-                uk_note = " (UK→AU blocked for cards)" if dest == 'AU' and not sd['is_journal'] else ""
+                c    = sd['ch'][dest]
+                curr = int(c['current'])
+                need = int(c['demand'] + c['buffer'])
+                gap_filled = f"{qty:,} of {int(c['deficit']):,} deficit"
+                uk_note = " (UK→AU blocked)" if dest == 'AU' and not sd['is_journal'] else ""
                 md += (f"| {dest.replace('_',' ')} | **{qty:,}** | {curr:,} | "
-                       f"{need:,} | {deficit:,} | "
-                       f"{need:,} need − {curr:,} stock = {deficit:,}{uk_note} |\n")
-            md += f"\n*Total: **{sd['total_print']:,} units** · ship direct from printer*\n\n"
+                       f"{need:,} | {gap_filled}{uk_note} |\n")
+            md += (f"\n**Total: {sd['total_print']:,} units.** "
+                   f"Ship all units direct from printer. No intermediate warehousing.\n\n")
 
     if top_up_skus:
-        md += "### 🖨️ Top-Up Prints (Targeted Channel Fills)\n\n"
-        md += ("Small supplemental prints where the transfer route is blocked or hub "
-               "surplus is exhausted. Hub→FBA transfers still proceed in parallel.\n\n")
-        md += "| SKU | Destination | Units | Reason |\n"
+        md += "### 🖨️ Top-Up Prints\n\n"
+        md += ("Top-up prints are small, targeted orders for channels where the transfer "
+               "route is blocked or hub surplus wasn't enough. These happen **in parallel** "
+               "with hub→FBA transfers — they don't replace each other.\n\n")
+        md += "| SKU | Destination | Units | Why Transfer Wasn't Enough |\n"
         md += "| :--- | :--- | ---: | :--- |\n"
         for s in top_up_skus:
             sid = s['sku_id']
             sd  = sku_data[sid]
             for dest, qty in sd['top_up_print'].items():
-                c    = sd['ch'][dest]
-                dem  = int(c['demand'])
-                curr = int(c['current'])
-                inc  = int(sd['incoming'].get(dest, 0))
+                c = sd['ch'][dest]
                 if dest == 'AU' and not sd['is_journal']:
-                    reason = f"Cards blocked UK→AU · no transfer route · AU needs {dem+int(c['buffer']):,}, has {curr:,}"
+                    why = "Cards can't use UK→AU route · no transfer source available"
                 elif dest == 'Amazon_CA_FBA':
-                    reason = f"CA hub surplus exhausted · CA FBA still short {qty:,}"
+                    why = f"CA hub surplus exhausted after Shopify reserve · FBA still needs {qty:,}"
                 elif dest == 'Amazon_US_FBA':
-                    reason = f"US hub surplus insufficient · US FBA still short {qty:,}"
+                    why = f"US hub surplus only covered {int(sd['outgoing_us_hub']):,} · FBA still needs {qty:,}"
+                elif dest == 'US_Shopify':
+                    why = f"US hubs short on their own Shopify demand · need {qty:,} more at hubs"
                 else:
-                    reason = f"Deficit {qty:,} after all transfers"
-                md += f"| {sd['name']} | {dest.replace('_',' ')} | **{qty:,}** | {reason} |\n"
+                    why = f"Transfer routes exhausted · {qty:,} unit gap remains"
+                md += f"| {sd['name']} | {dest.replace('_',' ')} | **{qty:,}** | {why} |\n"
         md += "\n"
 
     md += "---\n\n"
 
     # ── SECTION 4: TRANSFER PLAN ─────────────────────────────────────────────
     md += "## Section 4: Transfer Plan\n\n"
-    md += ("Complete all transfers by **September 1, 2026**. "
-           "FBA inbound processing takes 2–4 weeks — stock not in FBA by early October "
-           "will miss the November–December peak.\n\n")
-    md += ("> **Rule:** Hub→FBA transfers only happen for SKUs with **no new print run**. "
-           "Hub stock is split: Shopify demand + buffer stays at the hub; only the surplus moves to FBA.\n\n")
+    md += ("**Deadline: September 1, 2026.** FBA inbound processing takes 2–4 weeks — "
+           "stock must be checked in to FBA by early October to be available for the "
+           "November–December peak. Stock arriving after mid-October may miss the window.\n\n"
+           "Hub→FBA transfers only apply to SKUs **not** getting a print run. "
+           "For printing SKUs, FBA is filled by the print run directly.\n\n")
 
     has_transfers = any(sd['transfers'] for sd in sku_data.values())
     if has_transfers:
-        md += "| SKU | From → To | Units | Source Stock | Dest Need | Justification |\n"
+        md += "| SKU | Transfer | Units | Source Stock | Dest Need | Why |\n"
         md += "| :--- | :--- | ---: | ---: | ---: | :--- |\n"
         for sku in skus:
             sid = sku['sku_id']
@@ -703,153 +979,49 @@ def generate_report():
 
     md += "\n---\n\n"
 
-    # ── SECTION 5: ROLLING DEPLETION ─────────────────────────────────────────
-    md += "## Section 5: Rolling Depletion Forecast by Channel\n\n"
-    md += ("Starting stock = current inventory **after** all transfers and print runs arrive. "
-           "Each month we subtract max projected sales. "
-           "January 2027 ending balance = the 30-day carry-over buffer.\n\n")
+    # ── SECTION 5: CHECKLIST ─────────────────────────────────────────────────
+    md += "## Section 5: Action Checklist\n\n"
 
-    consumer_display = ['Amazon_US_FBA', 'Amazon_CA_FBA', 'US_Shopify', 'CA_Shopify', 'UK', 'AU']
-
-    for sku in skus:
-        sid = sku['sku_id']
-        sd  = sku_data[sid]
-
-        if not any(sd['ch'][r]['demand'] > 0 for r in consumer_display):
-            continue
-
-        md += f"### {sd['name']}\n\n"
-
-        for region in consumer_display:
-            c = sd['ch'][region]
-            if c['demand'] == 0 and sd['start_stock'].get(region, 0) == 0:
-                continue
-
-            starting   = sd['start_stock'].get(region, 0)
-            reg_buffer = c['buffer']
-            monthly    = c['monthly']
-
-            # Starting stock note
-            curr = int(c['current'])
-            inc  = int(sd['incoming'].get(region, 0))
-            sup_in = int(sd['supplier_alloc'].get(region, 0))
-
-            if region == 'UK':
-                out = int(sd['outgoing_uk'])
-                stock_note = (f"*Starting stock: **{int(starting):,}** "
-                              f"({curr:,} current − {out:,} transferred out)*")
-            elif region == 'US_Shopify':
-                out = int(sd['outgoing_us_hub'])
-                parts = [f"HBG+SLI+SAV+KCM: {curr:,}"]
-                if out > 0:
-                    parts.append(f"− {out:,} transferred to US FBA")
-                stock_note = f"*Starting stock: **{int(starting):,}** ({', '.join(parts)})*"
-            elif region == 'CA_Shopify':
-                out = int(sd['outgoing_ca_hub'])
-                parts = [f"CA hub: {curr:,}"]
-                if out > 0:
-                    parts.append(f"− {out:,} transferred to CA FBA")
-                if sup_in > 0:
-                    parts.append(f"+ {sup_in:,} supplier")
-                stock_note = f"*Starting stock: **{int(starting):,}** ({', '.join(parts)})*"
-            else:
-                parts = [f"{curr:,} current"]
-                if inc > 0:
-                    if region in sd.get('print_alloc', {}):
-                        src_label = 'print'
-                    elif region in sd.get('top_up_print', {}):
-                        src_label = 'top-up print'
-                    else:
-                        src_label = 'transfer + supplier' if sup_in > 0 and (inc - sup_in) > 0 else (
-                            'supplier' if sup_in > 0 else 'transfer')
-                    parts.append(f"{inc:,} {src_label}")
-                if len(parts) > 1:
-                    stock_note = f"*Starting stock: **{int(starting):,}** ({' + '.join(parts)})*"
-                else:
-                    stock_note = f"*Starting stock: **{int(starting):,}** (current stock only)*"
-
-            buf_parts = []
-            for m in buffer_months:
-                bp = c['buf_parts'].get(m, {})
-                if bp.get('avg', 0) > 0:
-                    buf_parts.append(f"{month_short[m]} avg {int(bp['avg']):,}")
-            buf_note = " + ".join(buf_parts) + f" = {int(reg_buffer):,}" if buf_parts else f"{int(reg_buffer):,}"
-
-            md += f"#### {region.replace('_', ' ')}\n\n"
-            md += stock_note + "\n\n"
-            md += f"*30-day buffer target: **{int(reg_buffer):,} units** ({buf_note})*\n\n"
-            md += "| Month | Max Projected Sales | Ending Stock | vs Buffer | Weeks of Cover |\n"
-            md += "| :--- | ---: | ---: | ---: | ---: |\n"
-
-            cumulative = 0
-            for i, m in enumerate(forecast_months):
-                m_max = monthly[m]
-                cumulative += m_max
-                ending = starting - cumulative
-
-                next_i = i + 1
-                if next_i < len(forecast_months):
-                    next_rate = monthly[forecast_months[next_i]]
-                else:
-                    next_rate = reg_buffer / 3
-                woc_str = f"{ending / (next_rate / (days_in.get(m, 30) / 7)):.1f}w" if next_rate > 0 else "—"
-
-                vs_buf = int(round(ending)) - int(round(reg_buffer))
-                vs_str = f"+{vs_buf:,}" if vs_buf >= 0 else f"**{vs_buf:,} ⚠️**"
-                flag   = " ⚠️" if ending < 0 else ""
-                md += (f"| {month_label[m]} | {int(m_max):,} | "
-                       f"**{int(ending):,}**{flag} | {vs_str} | {woc_str} |\n")
-
-            jan_end = starting - sum(monthly[m] for m in forecast_months)
-            status  = "✅" if jan_end >= reg_buffer * 0.9 else "⚠️ below target"
-            md += (f"\n> Jan 2027 ending: **{int(jan_end):,} units** | "
-                   f"Buffer target: {int(reg_buffer):,} | {status}\n\n")
-
-    md += "---\n\n"
-
-    # ── SECTION 6: MASTER CHECKLIST ──────────────────────────────────────────
-    md += "## Section 6: Master Action Checklist\n\n"
-
-    md += "### 🖨️ Print Orders (Place Immediately)\n\n"
+    md += "### 🖨️ Print Orders — Place Now\n\n"
     if printing_skus:
         for s in printing_skus:
             sd = sku_data[s['sku_id']]
-            md += f"- [ ] **{sd['name']}** — order **{sd['total_print']:,} units** from supplier\n"
+            md += f"- [ ] **{sd['name']}** — order {sd['total_print']:,} units\n"
             for dest, qty in sd['print_alloc'].items():
-                md += f"  - Ship **{qty:,} units** direct to **{dest.replace('_',' ')}**\n"
+                md += f"  - [ ] {qty:,} units → {dest.replace('_',' ')} (direct from printer)\n"
+        md += "\n"
     else:
-        md += "- ✅ No full production runs needed\n"
-    md += "\n"
+        md += "- ✅ No full production runs needed\n\n"
 
     if top_up_skus:
-        md += "### 🖨️ Top-Up Prints (Small Targeted Orders)\n\n"
+        md += "### 🖨️ Top-Up Prints — Place Now\n\n"
         for s in top_up_skus:
             sd = sku_data[s['sku_id']]
-            md += f"- [ ] **{sd['name']}** — top-up prints:\n"
+            md += f"- [ ] **{sd['name']}** top-up prints:\n"
             for dest, qty in sd['top_up_print'].items():
-                md += f"  - Ship **{qty:,} units** direct to **{dest.replace('_',' ')}**\n"
+                md += f"  - [ ] {qty:,} units → {dest.replace('_',' ')}\n"
         md += "\n"
 
-    md += "### 📦 Transfers (Complete Before September 1st)\n\n"
+    md += "### 📦 Transfers — Complete by September 1\n\n"
     for s in skus:
         sid = s['sku_id']
         sd  = sku_data[sid]
         if sd['transfers']:
             md += f"**{sd['name']}:**\n"
             for t in sd['transfers']:
-                md += f"- [ ] {t['source']} → {t['dest'].replace('_',' ')}: **{int(t['qty']):,} units**\n"
+                md += f"- [ ] {t['source']} → {t['dest'].replace('_',' ')}: {int(t['qty']):,} units\n"
             md += "\n"
 
     md += "### 📋 Verification Checkpoints\n\n"
-    md += "- [ ] Confirm print run lead times — stock must arrive before September for FBA prep\n"
-    md += "- [ ] FBA inbound shipments created in Seller Central with tracking numbers\n"
-    md += "- [ ] UK→AU journal shipments cleared customs and confirmed at AU warehouse\n"
-    md += "- [ ] US hub transfers initiated — confirm Shopify buffer is reserved before moving surplus\n"
-    md += "- [ ] Re-run this plan in August — adjust if Q3 demand runs above or below forecast\n"
-    md += "- [ ] Check again in November — flag early if December is tracking above forecast\n\n"
+    md += "- [ ] Print order lead times confirmed — stock must arrive by August for FBA prep\n"
+    md += "- [ ] FBA inbound shipments created in Seller Central with estimated arrival dates\n"
+    md += "- [ ] UK→AU journal transfers cleared customs and confirmed in AU system\n"
+    md += "- [ ] US hub transfers: confirm Shopify buffer reserved before moving surplus to FBA\n"
+    md += "- [ ] **Re-run this plan in August** — adjust if Q3 demand tracks above or below forecast\n"
+    md += "- [ ] **Check again in November** — flag early if December is pacing above forecast\n\n"
 
     md += "---\n\n"
-    md += "*Plan generated May 3, 2026. Re-run monthly. Source: `.tmp/data.json`*\n"
+    md += f"*Plan generated May 3, 2026 · Model: max(2024, 2025) per month per channel · Source: `.tmp/data.json`*\n"
 
     tmp_path  = os.path.join(PROJECT_ROOT, '.tmp/massive_report.md')
     docs_path = os.path.join(PROJECT_ROOT, 'docs/INVENTORY_MASTER_PLAN.md')
