@@ -254,22 +254,21 @@ def generate_report():
                     start_stock[region]    += alloc
                     pool -= alloc
 
-        # Step 4: Global gap check — BEFORE considering hub transfers.
-        # This is the key decision: does this SKU need a new print run?
-        #
-        # We check only what's available WITHOUT hub stock, because:
-        #   - If printing → hubs stay for Shopify, print goes direct to FBA
-        #   - If not printing → hubs transfer to FBA
-        #
-        # Available without hubs: consumer channel current stocks + UK transfers + supplier
+        # Step 4: Global gap check — include ALL available stock (consumer + hubs + supplier).
+        # Hubs (HBG/SLI/SAV/KCM → US FBA; CA → CA FBA) can reach FBA via transfer.
+        # So the correct question is: does total available stock cover total need?
+        #   YES → reposition (transfer from hubs to FBA, no print)
+        #   NO  → print mode (print direct to short channels, hubs stay for Shopify)
+        hub_keys   = ['HBG', 'SLI', 'SAV', 'KCM', 'CA']
+        hub_total  = sum(stock_idx.get(sid, {}).get(h, 0) for h in hub_keys)
         post_supplier_total = sum(start_stock[r] for r in all_channels)
         channel_need_total  = sum(ch[r]['demand'] + ch[r]['buffer'] for r in all_channels)
-        global_gap_check    = max(0.0, channel_need_total - post_supplier_total)
+        global_gap_check    = max(0.0, channel_need_total - post_supplier_total - hub_total)
         is_globally_short   = global_gap_check > 0
 
-        # Step 4a: PRINT MODE — SKU is globally short.
+        # Step 4a: PRINT MODE — not enough total stock even counting hubs.
         # Print ships direct from factory to each short channel.
-        # Hubs are NOT used for FBA (they keep their stock for Shopify).
+        # Hubs keep stock for Shopify — no hub→FBA transfers for this SKU.
         print_alloc = {}
         if is_globally_short:
             for region in all_channels:
@@ -282,13 +281,13 @@ def generate_report():
         total_print = sum(print_alloc.values())
         is_printing  = total_print > 0
 
-        # Step 4b: REPOSITION MODE — SKU is globally sufficient (no print needed).
-        # Existing hub stock transfers to FBA to fill channel deficits.
-        # US hubs → Amazon US FBA; CA Hub → Amazon CA FBA.
+        # Step 4b: REPOSITION MODE — enough total stock, just needs moving.
+        # US hubs (HBG/SLI/SAV/KCM) → Amazon US FBA
+        # CA Hub → Amazon CA FBA
         if not is_globally_short:
             for region, src_list in [
-                ('Amazon_US_FBA', [('HBG', 'HBG'), ('SLI', 'SLI'), ('SAV', 'SAV')]),
-                ('Amazon_CA_FBA', [('CA',  'CA Hub')]),
+                ('Amazon_US_FBA', [('HBG','HBG'), ('SLI','SLI'), ('SAV','SAV'), ('KCM','KCM')]),
+                ('Amazon_CA_FBA', [('CA', 'CA Hub')]),
             ]:
                 gap = max(0.0, ch[region]['demand'] + ch[region]['buffer']
                           - start_stock[region])
