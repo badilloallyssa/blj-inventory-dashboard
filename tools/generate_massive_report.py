@@ -100,7 +100,8 @@ def generate_report():
             a = avg(vals)
             total += a
             parts[m] = {'vals': vals, 'avg': a}
-        return total, parts
+        # 30-day buffer = average of the 3 post-peak months (not their sum)
+        return total / len(buffer_months), parts
 
     # ── PRE-COMPUTE ALL SKU DATA ─────────────────────────────────────────────
 
@@ -154,6 +155,7 @@ def generate_report():
             a = avg(vals)
             g_buf_parts[m] = {'vals': vals, 'avg': a}
             g_buf_total += a
+        g_buf_total = g_buf_total / len(buffer_months)  # 30-day = 1-month average
         g_demand = sum(g_monthly[m]['max'] for m in forecast_months)
         g_stock  = sum(stock_idx.get(sid, {}).values()) + sup_idx.get(sid, 0)
 
@@ -282,13 +284,13 @@ def generate_report():
     # ── BUILD MARKDOWN ───────────────────────────────────────────────────────
 
     md  = "# Inventory Master Plan: May 2026 – January 2027\n\n"
-    md += "*Generated: May 3, 2026 · 9-month active period + 90-day carry-over buffer · 8 SKUs · 10 warehouses*\n\n"
+    md += "*Generated: May 3, 2026 · 9-month active period + 30-day carry-over buffer · 8 SKUs · 10 warehouses*\n\n"
     md += "---\n\n"
 
     # ── EXECUTIVE SUMMARY ───────────────────────────────────────────────────
     md += "## Executive Summary\n\n"
     md += ("This plan covers every SKU from **May 2026 through January 2027** and "
-           "ensures each channel ends January with 90 days of carry-over stock — "
+           "ensures each channel ends January with 30 days of carry-over stock — "
            "enough to bridge to the next order cycle without touching zero.\n\n")
 
     md += "### What Needs to Happen Now\n\n"
@@ -335,7 +337,7 @@ def generate_report():
     md += "### Plan at a Glance\n\n"
     md += "| | |\n| :--- | :--- |\n"
     md += f"| Selling period | May 2026 – Jan 2027 (9 months) |\n"
-    md += f"| Buffer carry-over | Feb – Apr 2027 (90 days) |\n"
+    md += f"| Buffer carry-over | Feb 2027 (30 days) |\n"
     md += f"| SKUs needing new print | {len(printing_skus)} SKUs · {int(total_print_units):,} units total |\n"
     md += f"| Transfer moves | {total_transfers} |\n"
     md += ("| Print → FBA rule | If printing: ship direct to FBA from printer · "
@@ -349,7 +351,7 @@ def generate_report():
 
     md += "### The Two Questions\n\n"
     md += ("1. **How much will we sell?** — per channel, per month, May 2026–Jan 2027\n"
-           "2. **How much must be left over in January?** — 90-day buffer so we never hit zero "
+           "2. **How much must be left over in January?** — 30-day buffer so we never hit zero "
            "before the next order arrives\n\n")
 
     md += "### Demand: Use the Maximum, Not the Average\n\n"
@@ -368,8 +370,9 @@ def generate_report():
 
     md += "### Safety Buffer: 90 Days of Stock After January\n\n"
     md += ("The buffer is the average of what each channel historically sells in "
-           "February, March, and April. That amount must still be in the warehouse "
-           "on February 1st — it's our safety net before the next order cycle completes.\n\n")
+           "February, March, and April — then average them. That single monthly "
+           "average is the 30-day buffer: it must still be sitting in the warehouse "
+           "on February 1st before the next order cycle completes.\n\n")
 
     md += f"**Example — {ex_sd['name']} global buffer:**\n\n"
     md += "| Month | Historical Sales | Average |\n| :--- | :--- | ---: |\n"
@@ -377,7 +380,7 @@ def generate_report():
         bd = ex_sd['g_buf_parts'][m]
         vals = ', '.join(f"{int(v):,}" for v in bd['vals']) if bd['vals'] else 'no data'
         md += f"| {month_short[m]} | {vals} | **{int(bd['avg']):,}** |\n"
-    md += f"| **Total 90-day buffer** | | **{int(ex_sd['g_buf_total']):,}** |\n\n"
+    md += f"| **30-day buffer (avg)** | | **{int(ex_sd['g_buf_total']):,}** |\n\n"
 
     md += "### Print vs Transfer Decision\n\n"
     md += ("**If a channel is short and we need a new print run:** "
@@ -430,7 +433,7 @@ def generate_report():
         md += f"| **9-Month Total** | | | | **{int(sd['g_demand']):,}** |\n\n"
 
         # Buffer
-        md += "**90-Day Buffer (Feb–Apr average)**\n\n"
+        md += "**30-Day Buffer (Feb–Apr average)**\n\n"
         md += "| Month | 2024 | 2025 | Average |\n| :--- | ---: | ---: | ---: |\n"
         for m in buffer_months:
             bd   = sd['g_buf_parts'][m]
@@ -439,7 +442,7 @@ def generate_report():
             y24s = f"{y24b:,}" if y24b > 0 else "—"
             y25s = f"{y25b:,}" if y25b > 0 else "—"
             md += f"| {month_short[m]} | {y24s} | {y25s} | **{int(bd['avg']):,}** |\n"
-        md += f"| **Total** | | | **{int(sd['g_buf_total']):,}** |\n\n"
+        md += f"| **30-day buffer (avg)** | | | **{int(sd['g_buf_total']):,}** |\n\n"
 
         # Per-channel stock check
         md += "**Per-Channel Stock Check**\n\n"
@@ -557,7 +560,7 @@ def generate_report():
     md += "## Section 5: Rolling Depletion Forecast by Channel\n\n"
     md += ("Starting stock = current inventory **after** all transfers land and print runs arrive. "
            "Each month we subtract max projected sales. "
-           "January 2027 ending balance = the 90-day carry-over buffer.\n\n")
+           "January 2027 ending balance = the 30-day carry-over buffer.\n\n")
     md += ("> **How to read:** Starting stock is real — it reflects actual current inventory "
            "plus confirmed inbound (transfers or print). "
            "January ending balance should always be positive — that's the buffer.\n\n")
@@ -606,7 +609,7 @@ def generate_report():
 
             md += f"#### {region.replace('_', ' ')}\n\n"
             md += stock_note + "\n\n"
-            md += f"*90-day buffer target: **{int(reg_buffer):,} units** ({buf_note})*\n\n"
+            md += f"*30-day buffer target: **{int(reg_buffer):,} units** ({buf_note})*\n\n"
 
             md += "| Month | Max Projected Sales | Ending Stock | vs Buffer | Weeks of Cover |\n"
             md += "| :--- | ---: | ---: | ---: | ---: |\n"
