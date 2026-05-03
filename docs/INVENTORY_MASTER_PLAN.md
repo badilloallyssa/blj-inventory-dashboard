@@ -176,17 +176,47 @@ Peak demand hits in **Dec** at **20,248 units** globally. Even counting all ware
 
 > ⚠️ **Globally short: 13,873 units.** Total stock across all channels: 75,813 · Total need (demand + buffer): 89,686 · **Print run triggered.**
 
-**Hub Surplus Calculation** *(Shopify demand + buffer is reserved first — only what remains can transfer to FBA)*
+#### US & CA Channel Analysis
+
+**Step 1 — How much hub stock is reserved for Shopify vs available for FBA?**
 
 | | US Hubs (HBG / SLI / SAV / KCM) | CA Hub |
 | :--- | ---: | ---: |
 | Current stock at hub | 22,728 | 3,184 |
 | Incoming supplier stock | +0 | +1,953 |
-| **Total available at hub** | **22,728** | **5,137** |
-| US/CA Shopify demand May–Jan | 24,560 | 4,867 |
+| **Total available** | **22,728** | **5,137** |
+| Shopify demand May–Jan | 24,560 | 4,867 |
 | 30-day Shopify buffer | 1,197 | 270 |
-| **Total Shopify reserve** | **25,757** | **5,137** |
-| Result | **−3,029 shortfall (hub needs a print too)** | **−0 shortfall** |
+| **Shopify reserve (must keep)** | **25,757** | **5,137** |
+| **Hub result** | **−3,029 shortfall — hub itself needs 3,029 more units** | **−0 shortfall — hub needs 0 more** |
+
+**Step 2 — After hub transfer, is FBA covered?**
+
+| | Amazon US FBA | Amazon CA FBA |
+| :--- | ---: | ---: |
+| Current FBA stock | 1,935 | 0 |
+| Supplier stock | +0 | +306 |
+| **Total FBA stock** | **1,935** | **306** |
+| FBA demand May–Jan | 20,844 | 4,867 |
+| 30-day FBA buffer | 1,934 | 270 |
+| **FBA total need** | **22,778** | **5,137** |
+| **FBA result** | **−20,843 still short** | **−4,831 still short** |
+
+**US Hub monthly sell-through (US Shopify channel):**
+
+| Month | Projected Sales | Hub Balance | vs Buffer |
+| :--- | ---: | ---: | ---: |
+| May | 2,174 | **23,583** | +22,386 |
+| Jun | 1,214 | **22,369** | +21,172 |
+| Jul | 811 | **21,558** | +20,361 |
+| Aug | 1,054 | **20,504** | +19,307 |
+| Sep | 1,022 | **19,482** | +18,285 |
+| Oct | 897 | **18,585** | +17,388 |
+| Nov | 6,699 | **11,886** | +10,689 |
+| Dec | 7,994 | **3,892** | +2,695 |
+| Jan | 2,695 | **1,197** | +0 |
+
+> Jan 2027 hub balance: **1,197** · Buffer target: 1,197 · ✅ Hub ends above buffer
 
 #### Per-Channel Stock Check
 
@@ -372,17 +402,48 @@ Peak demand hits in **Dec** at **14,818 units** globally. We have **84,718 units
 
 > ✅ **Globally sufficient: +25,717 units ahead.** Total stock: 84,718 · Total need: 59,001 · **No print run needed.**
 
-**Hub Surplus Calculation** *(Shopify demand + buffer is reserved first — only what remains can transfer to FBA)*
+#### US & CA Channel Analysis
+
+**Step 1 — How much hub stock is reserved for Shopify vs available for FBA?**
 
 | | US Hubs (HBG / SLI / SAV / KCM) | CA Hub |
 | :--- | ---: | ---: |
 | Current stock at hub | 14,693 | 1,723 |
 | Incoming supplier stock | +0 | +2,289 |
-| **Total available at hub** | **14,693** | **4,012** |
-| US/CA Shopify demand May–Jan | 13,031 | 3,837 |
+| **Total available** | **14,693** | **4,012** |
+| Shopify demand May–Jan | 13,031 | 3,837 |
 | 30-day Shopify buffer | 623 | 175 |
-| **Total Shopify reserve** | **13,654** | **4,012** |
-| Result | **+1,039 surplus for FBA** | **−0 shortfall** |
+| **Shopify reserve (must keep)** | **13,654** | **4,012** |
+| **Hub result** | **+1,039 surplus → transfer 1,038 to US FBA** | **−0 shortfall — hub needs 0 more** |
+
+**Step 2 — After hub transfer, is FBA covered?**
+
+| | Amazon US FBA | Amazon CA FBA |
+| :--- | ---: | ---: |
+| Current FBA stock | 10,284 | 0 |
+| Transfer in from hub | +1,038 | +0 |
+| Supplier stock | +0 | +1,261 |
+| **Total FBA stock** | **11,322** | **1,261** |
+| FBA demand May–Jan | 17,044 | 3,837 |
+| 30-day FBA buffer | 1,310 | 175 |
+| **FBA total need** | **18,354** | **4,012** |
+| **FBA result** | **−7,032 still short** | **−2,751 still short** |
+
+**US Hub monthly sell-through (US Shopify channel):**
+
+| Month | Projected Sales | Hub Balance | vs Buffer |
+| :--- | ---: | ---: | ---: |
+| May | 1,054 | **12,601** | +11,978 |
+| Jun | 999 | **11,602** | +10,979 |
+| Jul | 1,025 | **10,577** | +9,954 |
+| Aug | 648 | **9,929** | +9,306 |
+| Sep | 704 | **9,225** | +8,602 |
+| Oct | 853 | **8,372** | +7,749 |
+| Nov | 1,768 | **6,604** | +5,981 |
+| Dec | 4,742 | **1,862** | +1,239 |
+| Jan | 1,238 | **624** | +1 |
+
+> Jan 2027 hub balance: **624** · Buffer target: 623 · ✅ Hub ends above buffer
 
 #### Per-Channel Stock Check
 
@@ -557,15 +618,46 @@ Peak demand hits in **Dec** at **11,695 units** globally. We have **59,022 units
 
 > ✅ **Globally sufficient: +2,408 units ahead.** Total stock: 59,022 · Total need: 56,614 · **No print run needed.**
 
-**Hub Surplus Calculation** *(Shopify demand + buffer is reserved first — only what remains can transfer to FBA)*
+#### US & CA Channel Analysis
+
+**Step 1 — How much hub stock is reserved for Shopify vs available for FBA?**
 
 | | US Hubs (HBG / SLI / SAV / KCM) | CA Hub |
 | :--- | ---: | ---: |
 | Current stock at hub | 18,064 | 4,825 |
-| US/CA Shopify demand May–Jan | 19,159 | 2,698 |
+| Shopify demand May–Jan | 19,159 | 2,698 |
 | 30-day Shopify buffer | 1,419 | 165 |
-| **Total Shopify reserve** | **20,578** | **2,863** |
-| Result | **−2,514 shortfall (hub needs a print too)** | **+1,962 surplus for FBA** |
+| **Shopify reserve (must keep)** | **20,578** | **2,863** |
+| **Hub result** | **−2,514 shortfall — hub itself needs 2,514 more units** | **+1,962 surplus → transfer 1,961 to CA FBA** |
+
+**Step 2 — After hub transfer, is FBA covered?**
+
+| | Amazon US FBA | Amazon CA FBA |
+| :--- | ---: | ---: |
+| Current FBA stock | 9,662 | 0 |
+| Transfer in from hub | +0 | +1,961 |
+| Supplier stock | +5,500 | +0 |
+| **Total FBA stock** | **15,162** | **1,961** |
+| FBA demand May–Jan | 15,313 | 2,698 |
+| 30-day FBA buffer | 1,250 | 165 |
+| **FBA total need** | **16,563** | **2,863** |
+| **FBA result** | **−1,401 still short** | **−902 still short** |
+
+**US Hub monthly sell-through (US Shopify channel):**
+
+| Month | Projected Sales | Hub Balance | vs Buffer |
+| :--- | ---: | ---: | ---: |
+| May | 1,141 | **19,437** | +18,018 |
+| Jun | 1,161 | **18,276** | +16,857 |
+| Jul | 939 | **17,337** | +15,918 |
+| Aug | 652 | **16,685** | +15,266 |
+| Sep | 1,465 | **15,220** | +13,801 |
+| Oct | 1,532 | **13,688** | +12,269 |
+| Nov | 2,293 | **11,395** | +9,976 |
+| Dec | 4,642 | **6,753** | +5,334 |
+| Jan | 5,334 | **1,419** | +0 |
+
+> Jan 2027 hub balance: **1,419** · Buffer target: 1,419 · ✅ Hub ends above buffer
 
 #### Per-Channel Stock Check
 
@@ -740,15 +832,46 @@ Peak demand hits in **Dec** at **11,179 units** globally. We have **61,237 units
 
 > ✅ **Globally sufficient: +8,903 units ahead.** Total stock: 61,237 · Total need: 52,334 · **No print run needed.**
 
-**Hub Surplus Calculation** *(Shopify demand + buffer is reserved first — only what remains can transfer to FBA)*
+#### US & CA Channel Analysis
+
+**Step 1 — How much hub stock is reserved for Shopify vs available for FBA?**
 
 | | US Hubs (HBG / SLI / SAV / KCM) | CA Hub |
 | :--- | ---: | ---: |
 | Current stock at hub | 34,801 | 4,526 |
-| US/CA Shopify demand May–Jan | 13,584 | 2,722 |
+| Shopify demand May–Jan | 13,584 | 2,722 |
 | 30-day Shopify buffer | 688 | 207 |
-| **Total Shopify reserve** | **14,272** | **2,929** |
-| Result | **+20,529 surplus for FBA** | **+1,597 surplus for FBA** |
+| **Shopify reserve (must keep)** | **14,272** | **2,929** |
+| **Hub result** | **+20,529 surplus → transfer 10,185 to US FBA** | **+1,597 surplus → transfer 1,429 to CA FBA** |
+
+**Step 2 — After hub transfer, is FBA covered?**
+
+| | Amazon US FBA | Amazon CA FBA |
+| :--- | ---: | ---: |
+| Current FBA stock | 1,050 | 0 |
+| Transfer in from hub | +10,185 | +1,429 |
+| Supplier stock | +0 | +1,500 |
+| **Total FBA stock** | **11,235** | **2,929** |
+| FBA demand May–Jan | 10,396 | 2,722 |
+| 30-day FBA buffer | 839 | 207 |
+| **FBA total need** | **11,235** | **2,929** |
+| **FBA result** | **✅ Covered (+0)** | **✅ Covered (+0)** |
+
+**US Hub monthly sell-through (US Shopify channel):**
+
+| Month | Projected Sales | Hub Balance | vs Buffer |
+| :--- | ---: | ---: | ---: |
+| May | 1,359 | **23,257** | +22,569 |
+| Jun | 745 | **22,512** | +21,824 |
+| Jul | 1,336 | **21,176** | +20,488 |
+| Aug | 1,385 | **19,791** | +19,103 |
+| Sep | 1,189 | **18,602** | +17,914 |
+| Oct | 838 | **17,764** | +17,076 |
+| Nov | 1,602 | **16,162** | +15,474 |
+| Dec | 3,893 | **12,269** | +11,581 |
+| Jan | 1,237 | **11,032** | +10,344 |
+
+> Jan 2027 hub balance: **11,032** · Buffer target: 688 · ✅ Hub ends above buffer
 
 #### Per-Channel Stock Check
 
@@ -926,15 +1049,45 @@ Peak demand hits in **Dec** at **4,700 units** globally. We have **62,275 units*
 
 > ✅ **Globally sufficient: +39,026 units ahead.** Total stock: 62,275 · Total need: 23,249 · **No print run needed.**
 
-**Hub Surplus Calculation** *(Shopify demand + buffer is reserved first — only what remains can transfer to FBA)*
+#### US & CA Channel Analysis
+
+**Step 1 — How much hub stock is reserved for Shopify vs available for FBA?**
 
 | | US Hubs (HBG / SLI / SAV / KCM) | CA Hub |
 | :--- | ---: | ---: |
 | Current stock at hub | 19,209 | 4,274 |
-| US/CA Shopify demand May–Jan | 5,310 | 881 |
+| Shopify demand May–Jan | 5,310 | 881 |
 | 30-day Shopify buffer | 358 | 73 |
-| **Total Shopify reserve** | **5,668** | **954** |
-| Result | **+13,541 surplus for FBA** | **+3,320 surplus for FBA** |
+| **Shopify reserve (must keep)** | **5,668** | **954** |
+| **Hub result** | **+13,541 surplus → transfer 6,078 to US FBA** | **+3,320 surplus → transfer 954 to CA FBA** |
+
+**Step 2 — After hub transfer, is FBA covered?**
+
+| | Amazon US FBA | Amazon CA FBA |
+| :--- | ---: | ---: |
+| Current FBA stock | 1,118 | 0 |
+| Transfer in from hub | +6,078 | +954 |
+| **Total FBA stock** | **7,196** | **954** |
+| FBA demand May–Jan | 6,758 | 881 |
+| 30-day FBA buffer | 438 | 73 |
+| **FBA total need** | **7,196** | **954** |
+| **FBA result** | **✅ Covered (+0)** | **✅ Covered (+0)** |
+
+**US Hub monthly sell-through (US Shopify channel):**
+
+| Month | Projected Sales | Hub Balance | vs Buffer |
+| :--- | ---: | ---: | ---: |
+| May | 682 | **12,449** | +12,091 |
+| Jun | 280 | **12,169** | +11,811 |
+| Jul | 445 | **11,724** | +11,366 |
+| Aug | 446 | **11,278** | +10,920 |
+| Sep | 350 | **10,928** | +10,570 |
+| Oct | 365 | **10,563** | +10,205 |
+| Nov | 1,003 | **9,560** | +9,202 |
+| Dec | 1,287 | **8,273** | +7,915 |
+| Jan | 452 | **7,821** | +7,463 |
+
+> Jan 2027 hub balance: **7,821** · Buffer target: 358 · ✅ Hub ends above buffer
 
 #### Per-Channel Stock Check
 
@@ -1109,15 +1262,46 @@ Peak demand hits in **Dec** at **9,070 units** globally. We have **63,514 units*
 
 > ✅ **Globally sufficient: +35,440 units ahead.** Total stock: 63,514 · Total need: 28,074 · **No print run needed.**
 
-**Hub Surplus Calculation** *(Shopify demand + buffer is reserved first — only what remains can transfer to FBA)*
+#### US & CA Channel Analysis
+
+**Step 1 — How much hub stock is reserved for Shopify vs available for FBA?**
 
 | | US Hubs (HBG / SLI / SAV / KCM) | CA Hub |
 | :--- | ---: | ---: |
 | Current stock at hub | 37,634 | 4,929 |
-| US/CA Shopify demand May–Jan | 7,093 | 1,589 |
+| Shopify demand May–Jan | 7,093 | 1,589 |
 | 30-day Shopify buffer | 156 | 73 |
-| **Total Shopify reserve** | **7,249** | **1,662** |
-| Result | **+30,385 surplus for FBA** | **+3,267 surplus for FBA** |
+| **Shopify reserve (must keep)** | **7,249** | **1,662** |
+| **Hub result** | **+30,385 surplus → transfer 5,302 to US FBA** | **+3,267 surplus → transfer 190 to CA FBA** |
+
+**Step 2 — After hub transfer, is FBA covered?**
+
+| | Amazon US FBA | Amazon CA FBA |
+| :--- | ---: | ---: |
+| Current FBA stock | 415 | 0 |
+| Transfer in from hub | +5,302 | +190 |
+| Supplier stock | +0 | +1,472 |
+| **Total FBA stock** | **5,717** | **1,662** |
+| FBA demand May–Jan | 5,428 | 1,589 |
+| 30-day FBA buffer | 289 | 73 |
+| **FBA total need** | **5,717** | **1,662** |
+| **FBA result** | **✅ Covered (+0)** | **✅ Covered (+0)** |
+
+**US Hub monthly sell-through (US Shopify channel):**
+
+| Month | Projected Sales | Hub Balance | vs Buffer |
+| :--- | ---: | ---: | ---: |
+| May | 465 | **31,867** | +31,711 |
+| Jun | 369 | **31,498** | +31,342 |
+| Jul | 331 | **31,167** | +31,011 |
+| Aug | 199 | **30,968** | +30,812 |
+| Sep | 163 | **30,805** | +30,649 |
+| Oct | 324 | **30,481** | +30,325 |
+| Nov | 901 | **29,580** | +29,424 |
+| Dec | 2,854 | **26,726** | +26,570 |
+| Jan | 1,487 | **25,239** | +25,083 |
+
+> Jan 2027 hub balance: **25,239** · Buffer target: 156 · ✅ Hub ends above buffer
 
 #### Per-Channel Stock Check
 
@@ -1292,15 +1476,45 @@ Peak demand hits in **Nov** at **7,489 units** globally. We have **43,091 units*
 
 > ✅ **Globally sufficient: +11,747 units ahead.** Total stock: 43,091 · Total need: 31,344 · **No print run needed.**
 
-**Hub Surplus Calculation** *(Shopify demand + buffer is reserved first — only what remains can transfer to FBA)*
+#### US & CA Channel Analysis
+
+**Step 1 — How much hub stock is reserved for Shopify vs available for FBA?**
 
 | | US Hubs (HBG / SLI / SAV / KCM) | CA Hub |
 | :--- | ---: | ---: |
 | Current stock at hub | 25,105 | 2,474 |
-| US/CA Shopify demand May–Jan | 10,369 | 1,896 |
+| Shopify demand May–Jan | 10,369 | 1,896 |
 | 30-day Shopify buffer | 582 | 137 |
-| **Total Shopify reserve** | **10,951** | **2,033** |
-| Result | **+14,154 surplus for FBA** | **+441 surplus for FBA** |
+| **Shopify reserve (must keep)** | **10,951** | **2,033** |
+| **Hub result** | **+14,154 surplus → transfer 3,514 to US FBA** | **+441 surplus → transfer 440 to CA FBA** |
+
+**Step 2 — After hub transfer, is FBA covered?**
+
+| | Amazon US FBA | Amazon CA FBA |
+| :--- | ---: | ---: |
+| Current FBA stock | 794 | 0 |
+| Transfer in from hub | +3,514 | +440 |
+| **Total FBA stock** | **4,308** | **440** |
+| FBA demand May–Jan | 3,957 | 1,896 |
+| 30-day FBA buffer | 351 | 137 |
+| **FBA total need** | **4,308** | **2,033** |
+| **FBA result** | **✅ Covered (+0)** | **−1,593 still short** |
+
+**US Hub monthly sell-through (US Shopify channel):**
+
+| Month | Projected Sales | Hub Balance | vs Buffer |
+| :--- | ---: | ---: | ---: |
+| May | 276 | **21,315** | +20,733 |
+| Jun | 109 | **21,206** | +20,624 |
+| Jul | 265 | **20,941** | +20,359 |
+| Aug | 160 | **20,781** | +20,199 |
+| Sep | 2,103 | **18,678** | +18,096 |
+| Oct | 2,157 | **16,521** | +15,939 |
+| Nov | 1,599 | **14,922** | +14,340 |
+| Dec | 2,854 | **12,068** | +11,486 |
+| Jan | 846 | **11,222** | +10,640 |
+
+> Jan 2027 hub balance: **11,222** · Buffer target: 582 · ✅ Hub ends above buffer
 
 #### Per-Channel Stock Check
 
@@ -1478,15 +1692,45 @@ Peak demand hits in **Nov** at **14,995 units** globally. Even counting all ware
 
 > ⚠️ **Globally short: 5,805 units.** Total stock across all channels: 34,177 · Total need (demand + buffer): 39,982 · **Print run triggered.**
 
-**Hub Surplus Calculation** *(Shopify demand + buffer is reserved first — only what remains can transfer to FBA)*
+#### US & CA Channel Analysis
+
+**Step 1 — How much hub stock is reserved for Shopify vs available for FBA?**
 
 | | US Hubs (HBG / SLI / SAV / KCM) | CA Hub |
 | :--- | ---: | ---: |
 | Current stock at hub | 15,083 | 1,547 |
-| US/CA Shopify demand May–Jan | 14,007 | 2,591 |
+| Shopify demand May–Jan | 14,007 | 2,591 |
 | 30-day Shopify buffer | 149 | 51 |
-| **Total Shopify reserve** | **14,156** | **2,642** |
-| Result | **+927 surplus for FBA** | **−1,095 shortfall** |
+| **Shopify reserve (must keep)** | **14,156** | **2,642** |
+| **Hub result** | **+927 surplus → transfer 0 to US FBA** | **−1,095 shortfall — hub needs 1,095 more** |
+
+**Step 2 — After hub transfer, is FBA covered?**
+
+| | Amazon US FBA | Amazon CA FBA |
+| :--- | ---: | ---: |
+| Current FBA stock | 7,426 | 0 |
+| Supplier stock | +2,077 | +0 |
+| **Total FBA stock** | **9,503** | **0** |
+| FBA demand May–Jan | 9,287 | 2,591 |
+| 30-day FBA buffer | 216 | 51 |
+| **FBA total need** | **9,503** | **2,642** |
+| **FBA result** | **✅ Covered (+0)** | **−2,642 still short** |
+
+**US Hub monthly sell-through (US Shopify channel):**
+
+| Month | Projected Sales | Hub Balance | vs Buffer |
+| :--- | ---: | ---: | ---: |
+| May | 0 | **15,083** | +14,934 |
+| Jun | 1,130 | **13,953** | +13,804 |
+| Jul | 229 | **13,724** | +13,575 |
+| Aug | 551 | **13,173** | +13,024 |
+| Sep | 846 | **12,327** | +12,178 |
+| Oct | 702 | **11,625** | +11,476 |
+| Nov | 5,188 | **6,437** | +6,288 |
+| Dec | 4,530 | **1,907** | +1,758 |
+| Jan | 831 | **1,076** | +927 |
+
+> Jan 2027 hub balance: **1,076** · Buffer target: 149 · ✅ Hub ends above buffer
 
 #### Per-Channel Stock Check
 

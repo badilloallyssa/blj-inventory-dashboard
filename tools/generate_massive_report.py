@@ -146,8 +146,8 @@ def stockout_md(sd, forecast_months, month_label):
     return md
 
 
-def hub_math_md(sd):
-    """Explicit hub surplus calculation for boss-level transparency."""
+def hub_math_md(sd, forecast_months):
+    """Hub surplus table + FBA gap analysis + monthly hub depletion — boss-level transparency."""
     ch = sd['ch']
 
     us_curr    = int(ch['US_Shopify']['current'])
@@ -158,6 +158,7 @@ def hub_math_md(sd):
     us_avail   = us_curr + us_sup
     us_surplus = max(0, us_avail - us_need)
     us_short   = max(0, us_need - us_avail)
+    us_xfr     = int(sd['outgoing_us_hub'])
 
     ca_curr    = int(ch['CA_Shopify']['current'])
     ca_dem     = int(ch['CA_Shopify']['demand'])
@@ -167,21 +168,86 @@ def hub_math_md(sd):
     ca_avail   = ca_curr + ca_sup
     ca_surplus = max(0, ca_avail - ca_need)
     ca_short   = max(0, ca_need - ca_avail)
+    ca_xfr     = int(sd['outgoing_ca_hub'])
 
-    md  = "**Hub Surplus Calculation** *(Shopify demand + buffer is reserved first — only what remains can transfer to FBA)*\n\n"
+    fba_us_curr = int(ch['Amazon_US_FBA']['current'])
+    fba_us_dem  = int(ch['Amazon_US_FBA']['demand'])
+    fba_us_buf  = int(ch['Amazon_US_FBA']['buffer'])
+    fba_us_need = fba_us_dem + fba_us_buf
+    fba_ca_curr = int(ch['Amazon_CA_FBA']['current'])
+    fba_ca_dem  = int(ch['Amazon_CA_FBA']['demand'])
+    fba_ca_buf  = int(ch['Amazon_CA_FBA']['buffer'])
+    fba_ca_need = fba_ca_dem + fba_ca_buf
+
+    md  = "#### US & CA Channel Analysis\n\n"
+
+    # ── Hub vs Shopify table ──
+    md += "**Step 1 — How much hub stock is reserved for Shopify vs available for FBA?**\n\n"
     md += "| | US Hubs (HBG / SLI / SAV / KCM) | CA Hub |\n"
     md += "| :--- | ---: | ---: |\n"
     md += f"| Current stock at hub | {us_curr:,} | {ca_curr:,} |\n"
     if us_sup > 0 or ca_sup > 0:
         md += f"| Incoming supplier stock | +{us_sup:,} | +{ca_sup:,} |\n"
-        md += f"| **Total available at hub** | **{us_avail:,}** | **{ca_avail:,}** |\n"
-    md += f"| US/CA Shopify demand May–Jan | {us_dem:,} | {ca_dem:,} |\n"
+        md += f"| **Total available** | **{us_avail:,}** | **{ca_avail:,}** |\n"
+    md += f"| Shopify demand May–Jan | {us_dem:,} | {ca_dem:,} |\n"
     md += f"| 30-day Shopify buffer | {us_buf:,} | {ca_buf:,} |\n"
-    md += f"| **Total Shopify reserve** | **{us_need:,}** | **{ca_need:,}** |\n"
+    md += f"| **Shopify reserve (must keep)** | **{us_need:,}** | **{ca_need:,}** |\n"
 
-    us_surplus_str = f"**+{us_surplus:,} surplus for FBA**" if us_surplus > 0 else f"**−{us_short:,} shortfall (hub needs a print too)**"
-    ca_surplus_str = f"**+{ca_surplus:,} surplus for FBA**" if ca_surplus > 0 else f"**−{ca_short:,} shortfall**"
-    md += f"| Result | {us_surplus_str} | {ca_surplus_str} |\n\n"
+    if us_surplus > 0:
+        us_res = f"**+{us_surplus:,} surplus → transfer {us_xfr:,} to US FBA**"
+    else:
+        us_res = f"**−{us_short:,} shortfall — hub itself needs {us_short:,} more units**"
+    if ca_surplus > 0:
+        ca_res = f"**+{ca_surplus:,} surplus → transfer {ca_xfr:,} to CA FBA**"
+    else:
+        ca_res = f"**−{ca_short:,} shortfall — hub needs {ca_short:,} more**"
+    md += f"| **Hub result** | {us_res} | {ca_res} |\n\n"
+
+    # ── FBA gap table ──
+    md += "**Step 2 — After hub transfer, is FBA covered?**\n\n"
+    md += "| | Amazon US FBA | Amazon CA FBA |\n"
+    md += "| :--- | ---: | ---: |\n"
+    md += f"| Current FBA stock | {fba_us_curr:,} | {fba_ca_curr:,} |\n"
+    if us_xfr > 0 or ca_xfr > 0:
+        md += f"| Transfer in from hub | +{us_xfr:,} | +{ca_xfr:,} |\n"
+    sup_us_fba = int(sd['supplier_alloc'].get('Amazon_US_FBA', 0))
+    sup_ca_fba = int(sd['supplier_alloc'].get('Amazon_CA_FBA', 0))
+    if sup_us_fba > 0 or sup_ca_fba > 0:
+        md += f"| Supplier stock | +{sup_us_fba:,} | +{sup_ca_fba:,} |\n"
+    fba_us_have = fba_us_curr + us_xfr + sup_us_fba
+    fba_ca_have = fba_ca_curr + ca_xfr + sup_ca_fba
+    md += f"| **Total FBA stock** | **{fba_us_have:,}** | **{fba_ca_have:,}** |\n"
+    md += f"| FBA demand May–Jan | {fba_us_dem:,} | {fba_ca_dem:,} |\n"
+    md += f"| 30-day FBA buffer | {fba_us_buf:,} | {fba_ca_buf:,} |\n"
+    md += f"| **FBA total need** | **{fba_us_need:,}** | **{fba_ca_need:,}** |\n"
+    fba_us_gap = fba_us_need - fba_us_have
+    fba_ca_gap = fba_ca_need - fba_ca_have
+    us_fba_res = f"**−{fba_us_gap:,} still short**" if fba_us_gap > 0 else f"**✅ Covered (+{-fba_us_gap:,})**"
+    ca_fba_res = f"**−{fba_ca_gap:,} still short**" if fba_ca_gap > 0 else f"**✅ Covered (+{-fba_ca_gap:,})**"
+    md += f"| **FBA result** | {us_fba_res} | {ca_fba_res} |\n\n"
+
+    # ── Monthly US hub depletion (only show if interesting — hub has meaningful volume) ──
+    if us_dem > 0:
+        mlabels = {5:'May',6:'Jun',7:'Jul',8:'Aug',9:'Sep',10:'Oct',11:'Nov',12:'Dec',1:'Jan'}
+        us_start = us_avail - us_xfr  # hub start after transferring surplus to FBA
+        us_print = int(sd['print_alloc'].get('US_Shopify', 0) + sd['top_up_print'].get('US_Shopify', 0))
+        us_start += us_print
+        monthly = ch['US_Shopify']['monthly']
+        md += "**US Hub monthly sell-through (US Shopify channel):**\n\n"
+        md += "| Month | Projected Sales | Hub Balance | vs Buffer |\n"
+        md += "| :--- | ---: | ---: | ---: |\n"
+        cumul = 0
+        for m in forecast_months:
+            cumul += monthly[m]
+            bal = us_start - cumul
+            vs  = int(bal) - int(us_buf)
+            vs_str = f"+{vs:,}" if vs >= 0 else f"**{vs:,} ⚠️**"
+            flag = " ⚠️" if bal < 0 else ""
+            md += f"| {mlabels[m]} | {int(monthly[m]):,} | **{int(bal):,}**{flag} | {vs_str} |\n"
+        jan_bal = us_start - sum(monthly[m] for m in forecast_months)
+        status  = "✅ Hub ends above buffer" if jan_bal >= us_buf * 0.9 else "⚠️ Hub ends below buffer"
+        md += f"\n> Jan 2027 hub balance: **{int(jan_bal):,}** · Buffer target: {int(us_buf):,} · {status}\n\n"
+
     return md
 
 
@@ -787,7 +853,7 @@ def generate_report():
         md += gap_box
 
         # Hub surplus analysis
-        md += hub_math_md(sd)
+        md += hub_math_md(sd, forecast_months)
 
         # Per-channel breakdown
         md += "#### Per-Channel Stock Check\n\n"
