@@ -228,10 +228,10 @@ def generate_report():
             else:
                 start_stock[region] = ch[region]['current'] + incoming.get(region, 0)
 
-        # Step 3: Supplier allocation (before hub repositioning — reduces what hubs need to cover)
+        # Step 3: Supplier allocation
         supplier_alloc = defaultdict(float)
 
-        # Canada supplier → CA FBA only (restricted: Canada factory → CA channels)
+        # Canada supplier → CA FBA only (restricted to Canadian channels)
         if canada_sup > 0:
             need = max(0.0, ch['Amazon_CA_FBA']['demand'] + ch['Amazon_CA_FBA']['buffer']
                        - start_stock['Amazon_CA_FBA'])
@@ -254,44 +254,22 @@ def generate_report():
                     start_stock[region]    += alloc
                     pool -= alloc
 
-        # Step 4: Hub repositioning — use existing warehouse stock to fill FBA gaps.
-        # US hubs (HBG/SLI/SAV) → Amazon US FBA
-        # CA Hub → Amazon CA FBA (CA Hub is already in Canada, natural route to CA FBA)
-        # Note: new prints never go via hubs — prints ship direct from factory to channel.
-        for region, src_list in [
-            ('Amazon_US_FBA', [('HBG', 'HBG'), ('SLI', 'SLI'), ('SAV', 'SAV')]),
-            ('Amazon_CA_FBA', [('CA',  'CA Hub')]),
-        ]:
-            gap = max(0.0, ch[region]['demand'] + ch[region]['buffer']
-                      - start_stock[region])
-            for src_key, src_label in src_list:
-                if gap <= 0:
-                    break
-                src_stock = stock_idx.get(sid, {}).get(src_key, 0)
-                if src_stock > 0:
-                    pull = min(gap, src_stock)
-                    transfers.append({
-                        'source': src_label, 'dest': region, 'qty': pull,
-                        'reason': (
-                            f"{region.replace('_',' ')} needs "
-                            f"{int(ch[region]['demand'] + ch[region]['buffer']):,}; "
-                            f"has {int(ch[region]['current']):,}; "
-                            f"{src_label} has {int(src_stock):,}")
-                    })
-                    incoming[region]    += pull
-                    start_stock[region] += pull
-                    gap -= pull
+        # Step 4: Global gap check — BEFORE considering hub transfers.
+        # This is the key decision: does this SKU need a new print run?
+        #
+        # We check only what's available WITHOUT hub stock, because:
+        #   - If printing → hubs stay for Shopify, print goes direct to FBA
+        #   - If not printing → hubs transfer to FBA
+        #
+        # Available without hubs: consumer channel current stocks + UK transfers + supplier
+        post_supplier_total = sum(start_stock[r] for r in all_channels)
+        channel_need_total  = sum(ch[r]['demand'] + ch[r]['buffer'] for r in all_channels)
+        global_gap_check    = max(0.0, channel_need_total - post_supplier_total)
+        is_globally_short   = global_gap_check > 0
 
-        # Step 5: Global gap check — after ALL repositioning (UK + supplier + hub).
-        # Compare total consumer channel stock (post-reposition) vs total demand+buffer.
-        # If globally sufficient, any remaining individual channel gaps are blocked-route
-        # problems (UK can't reach US, cards can't go UK→AU) → small top-up prints.
-        # If globally short, print the residual gaps direct from factory to channel.
-        post_reposition_total  = sum(start_stock[r] for r in all_channels)
-        channel_need_total     = sum(ch[r]['demand'] + ch[r]['buffer'] for r in all_channels)
-        global_gap_check       = max(0.0, channel_need_total - post_reposition_total)
-        is_globally_short      = global_gap_check > 0
-
+        # Step 4a: PRINT MODE — SKU is globally short.
+        # Print ships direct from factory to each short channel.
+        # Hubs are NOT used for FBA (they keep their stock for Shopify).
         print_alloc = {}
         if is_globally_short:
             for region in all_channels:
@@ -304,8 +282,37 @@ def generate_report():
         total_print = sum(print_alloc.values())
         is_printing  = total_print > 0
 
-        # Step 6: Top-up prints — globally sufficient but specific channel gaps remain
-        # due to blocked routes (UK→US blocked, cards UK→AU blocked) or exhausted sources.
+        # Step 4b: REPOSITION MODE — SKU is globally sufficient (no print needed).
+        # Existing hub stock transfers to FBA to fill channel deficits.
+        # US hubs → Amazon US FBA; CA Hub → Amazon CA FBA.
+        if not is_globally_short:
+            for region, src_list in [
+                ('Amazon_US_FBA', [('HBG', 'HBG'), ('SLI', 'SLI'), ('SAV', 'SAV')]),
+                ('Amazon_CA_FBA', [('CA',  'CA Hub')]),
+            ]:
+                gap = max(0.0, ch[region]['demand'] + ch[region]['buffer']
+                          - start_stock[region])
+                for src_key, src_label in src_list:
+                    if gap <= 0:
+                        break
+                    src_stock = stock_idx.get(sid, {}).get(src_key, 0)
+                    if src_stock > 0:
+                        pull = min(gap, src_stock)
+                        transfers.append({
+                            'source': src_label, 'dest': region, 'qty': pull,
+                            'reason': (
+                                f"{region.replace('_',' ')} needs "
+                                f"{int(ch[region]['demand'] + ch[region]['buffer']):,}; "
+                                f"has {int(ch[region]['current']):,}; "
+                                f"{src_label} has {int(src_stock):,}")
+                        })
+                        incoming[region]    += pull
+                        start_stock[region] += pull
+                        gap -= pull
+
+        # Step 5: Top-up prints — globally sufficient (reposition mode) but a specific
+        # channel still has a gap after hub transfers because its route is blocked
+        # (e.g. cards can't go UK→AU, CA Hub is exhausted).
         top_up_print = {}
         if not is_globally_short:
             for region in all_channels:
