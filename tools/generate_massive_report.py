@@ -220,17 +220,19 @@ def generate_report():
             r: max(0.0, ch[r]['demand'] + ch[r]['buffer'] - start_stock[r])
             for r in all_channels
         }
-        any_short = any(v > 0 for v in shortfalls.values())
 
-        # Step 4a: Print mode — triggered by ANY channel being short.
-        # Rule: if printing anything, print for ALL short channels; no hub→FBA transfers.
+        # Gate on GLOBAL shortage — not per-channel shortage.
+        # If globally sufficient, we reposition existing stock (hub→FBA transfers).
+        # Only print new units when global supply is actually insufficient.
+        global_gap_check = max(0.0, g_demand + g_buf_total - g_stock)
+        is_globally_short = global_gap_check > 0
+
+        # Step 4a: Print mode — only when globally short.
+        # Rule: if printing, fill ALL channel shortfalls from print; no hub→FBA transfers.
         print_alloc = {}
-        if any_short:
+        if is_globally_short:
             for region, shortfall in shortfalls.items():
                 if shortfall > 0:
-                    # EU: only print if UK truly can't cover (already handled in Step 1b)
-                    # We skip EU here — the transfer in Step 1b covers what it can;
-                    # remaining EU gap is a real shortfall that needs print.
                     print_alloc[region] = int(shortfall)
                     incoming[region]    += shortfall
                     start_stock[region] += shortfall
@@ -238,7 +240,7 @@ def generate_report():
         total_print = sum(print_alloc.values())
         is_printing = total_print > 0
 
-        # Step 4b: Reposition mode — no print needed, use hub→FBA transfers.
+        # Step 4b: Reposition mode — globally sufficient, move stock into FBA via hub transfers.
         if not is_printing:
             for region, src_list in [
                 ('Amazon_US_FBA', [('HBG', 'HBG'), ('SLI', 'SLI'), ('SAV', 'SAV')]),
@@ -264,6 +266,22 @@ def generate_report():
                         start_stock[region] += pull
                         gap -= pull
 
+        # Step 5: Top-up prints — when in reposition mode, some channels may still have
+        # gaps because transfer sources are exhausted (CA Hub depleted) or routes are
+        # blocked (cards can't go UK→AU). Fill these with small targeted prints direct
+        # to the specific channel. Hub→FBA transfers for other channels still proceed.
+        top_up_print = {}
+        if not is_globally_short:
+            for region in all_channels:
+                residual = max(0.0,
+                               ch[region]['demand'] + ch[region]['buffer']
+                               - start_stock[region])
+                if residual > 0:
+                    top_up_print[region] = int(residual)
+                    start_stock[region] += residual
+
+        total_top_up = sum(top_up_print.values())
+
         sku_data[sid] = {
             'name': name, 'is_journal': is_j,
             'g_monthly': g_monthly, 'g_buf_parts': g_buf_parts,
@@ -273,12 +291,15 @@ def generate_report():
             'outgoing_uk': outgoing_uk,
             'print_alloc': print_alloc, 'total_print': total_print,
             'is_printing': is_printing,
+            'top_up_print': top_up_print, 'total_top_up': total_top_up,
             'start_stock': start_stock,
         }
 
     # ── REPORT STATS ────────────────────────────────────────────────────────
     printing_skus     = [s for s in skus if sku_data[s['sku_id']]['is_printing']]
     total_print_units = sum(sku_data[s['sku_id']]['total_print'] for s in printing_skus)
+    top_up_skus       = [s for s in skus if sku_data[s['sku_id']]['total_top_up'] > 0]
+    total_top_up_all  = sum(sku_data[s['sku_id']]['total_top_up'] for s in top_up_skus)
     total_transfers   = sum(len(sku_data[s['sku_id']]['transfers']) for s in skus)
 
     # ── BUILD MARKDOWN ───────────────────────────────────────────────────────
@@ -334,16 +355,30 @@ def generate_report():
             md += f"- **{sd['name']}**: {t_str}\n"
         md += "\n"
 
+    if top_up_skus:
+        md += "**🖨️ Top-Up Prints** *(small targeted prints where transfer routes are blocked or source stock is exhausted)*:\n\n"
+        for s in top_up_skus:
+            sd = sku_data[s['sku_id']]
+            tp_str = ', '.join(
+                f"{qty:,} → {dest.replace('_',' ')}"
+                for dest, qty in sd['top_up_print'].items()
+            )
+            md += f"- **{sd['name']}**: {tp_str} — hub→FBA transfers for other channels still proceed\n"
+        md += "\n"
+
     md += "### Plan at a Glance\n\n"
     md += "| | |\n| :--- | :--- |\n"
     md += f"| Selling period | May 2026 – Jan 2027 (9 months) |\n"
     md += f"| Buffer carry-over | Feb 2027 (30 days) |\n"
-    md += f"| SKUs needing new print | {len(printing_skus)} SKUs · {int(total_print_units):,} units total |\n"
+    md += f"| Full print runs | {len(printing_skus)} SKUs · {int(total_print_units):,} units total |\n"
+    md += f"| Top-up prints | {len(top_up_skus)} SKUs · {int(total_top_up_all):,} units (channel gaps where transfers fall short) |\n"
     md += f"| Transfer moves | {total_transfers} |\n"
     md += ("| Print → FBA rule | If printing: ship direct to FBA from printer · "
            "No hub→FBA transfers |\n")
     md += ("| Transfer → FBA rule | If NOT printing: reposition hub stock into FBA · "
-           "No new print |\n\n")
+           "No new print |\n")
+    md += ("| Top-up rule | Small targeted prints when transfer route is blocked or "
+           "source exhausted — does NOT cancel hub transfers |\n\n")
     md += "---\n\n"
 
     # ── SECTION 1: METHODOLOGY ──────────────────────────────────────────────
@@ -455,7 +490,7 @@ def generate_report():
             deficit = int(c['deficit'])
             curr    = int(c['current'])
             dem     = int(c['demand'])
-            # Determine fill method — check print_alloc first, then transfers
+            # Determine fill method — check print_alloc first, then transfers, then top-up
             if deficit == 0:
                 fill = "✅ Sufficient stock"
             elif region in sd['print_alloc']:
@@ -464,10 +499,19 @@ def generate_report():
                 fill = f"🖨️ Print {qty:,} direct to {region.replace('_',' ')}{note}"
             else:
                 dest_transfers = [t for t in sd['transfers'] if t['dest'] == region]
-                if dest_transfers:
+                tp_qty = sd['top_up_print'].get(region, 0)
+                if dest_transfers and tp_qty:
+                    parts = [f"{t['source']} {int(t['qty']):,}" for t in dest_transfers]
+                    icon  = "✈️" if any(t['source'] == 'UK' for t in dest_transfers) else "📦"
+                    fill  = (f"{icon} Transfer: {' + '.join(parts)} "
+                             f"+ 🖨️ top-up print {tp_qty:,}")
+                elif dest_transfers:
                     parts = [f"{t['source']} {int(t['qty']):,}" for t in dest_transfers]
                     icon  = "✈️" if any(t['source'] == 'UK' for t in dest_transfers) else "📦"
                     fill  = f"{icon} Transfer: {' + '.join(parts)}"
+                elif tp_qty:
+                    note = " (UK→AU blocked for cards)" if region == 'AU' and not sd['is_journal'] else ""
+                    fill = f"🖨️ Top-up print {tp_qty:,} direct to {region.replace('_',' ')}{note}"
                 else:
                     fill = f"⚠️ Deficit {deficit:,} — unresolved (no transfer or print allocated)"
             md += f"| {region.replace('_',' ')} | {dem:,} | {curr:,} | {deficit:,} | {fill} |\n"
@@ -489,6 +533,13 @@ def generate_report():
                 for dest, qty in sd['print_alloc'].items()
             )
             md += f"\n**→ PRINT ORDER: {sd['total_print']:,} units** ({alloc_detail})\n\n"
+        elif sd['total_top_up'] > 0:
+            tp_detail = ' + '.join(
+                f"{qty:,} to {dest.replace('_',' ')}"
+                for dest, qty in sd['top_up_print'].items()
+            )
+            md += (f"\n**→ No full production run** — hub transfers cover most channels · "
+                   f"Top-up print: **{sd['total_top_up']:,} units** ({tp_detail})\n\n")
         else:
             md += f"\n**→ No print order needed** — transfers reposition existing stock\n\n"
 
@@ -524,6 +575,31 @@ def generate_report():
                        f"{dem:,} demand − {curr:,} stock = {deficit:,} needed{uk_note} |\n")
 
             md += f"\n*Total print run: **{sd['total_print']:,} units** · ship direct from printer*\n\n"
+
+    if top_up_skus:
+        md += "### 🖨️ Top-Up Prints (Targeted Channel Fills)\n\n"
+        md += ("These are small supplemental prints for specific channels where the normal "
+               "transfer route is **blocked or the source is exhausted**. Unlike a full production "
+               "run, top-up prints do **not** cancel hub→FBA transfers — both happen in parallel.\n\n")
+        md += "| SKU | Destination | Units | Reason |\n"
+        md += "| :--- | :--- | ---: | :--- |\n"
+        for s in top_up_skus:
+            sid = s['sku_id']
+            sd  = sku_data[sid]
+            for dest, qty in sd['top_up_print'].items():
+                c    = sd['ch'][dest]
+                dem  = int(c['demand'])
+                curr = int(c['current'])
+                inc  = int(sd['incoming'].get(dest, 0))
+                if dest == 'AU' and not sd['is_journal']:
+                    reason = f"Cards blocked UK→AU · no transfer route · AU needs {dem+int(c['buffer']):,}, has {curr:,}"
+                elif dest == 'Amazon_CA_FBA':
+                    reason = f"CA Hub exhausted ({curr+inc:,} transferred) · CA FBA still short {qty:,}"
+                else:
+                    reason = (f"UK surplus exhausted · transfer covered {inc:,} of {int(c['deficit']):,} "
+                              f"deficit · {qty:,} still short")
+                md += f"| {sd['name']} | {dest.replace('_',' ')} | **{qty:,}** | {reason} |\n"
+        md += "\n"
 
     md += "---\n\n"
 
@@ -656,8 +732,17 @@ def generate_report():
             for dest, qty in sd['print_alloc'].items():
                 md += f"  - Ship **{qty:,} units** direct to **{dest.replace('_',' ')}**\n"
     else:
-        md += "- ✅ No print orders needed\n"
+        md += "- ✅ No full production runs needed\n"
     md += "\n"
+
+    if top_up_skus:
+        md += "### 🖨️ Top-Up Prints (Small Targeted Orders)\n\n"
+        for s in top_up_skus:
+            sd = sku_data[s['sku_id']]
+            md += f"- [ ] **{sd['name']}** — top-up prints:\n"
+            for dest, qty in sd['top_up_print'].items():
+                md += f"  - Ship **{qty:,} units** direct to **{dest.replace('_',' ')}**\n"
+        md += "\n"
 
     md += "### 📦 Transfers (Complete Before September 1st)\n\n"
     for s in skus:
@@ -671,6 +756,7 @@ def generate_report():
 
     md += "### 📋 Verification Checkpoints\n\n"
     md += "- [ ] Print order lead times confirmed — Kids Journal & Know Me Cards must arrive before September\n"
+    md += "- [ ] Top-up print orders confirmed — Teen Journal CA FBA, Sharing Joy AU, Daily Teal AU\n"
     md += "- [ ] FBA inbound shipments created in Seller Central with tracking numbers\n"
     md += "- [ ] UK→AU journal shipments cleared customs and confirmed at AU warehouse\n"
     md += "- [ ] Re-run this plan in August — adjust if Q3 demand runs above or below forecast\n"
