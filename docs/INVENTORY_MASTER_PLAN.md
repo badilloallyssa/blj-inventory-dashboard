@@ -14,15 +14,15 @@ We're entering the 9-month window from May through January — our most importan
 
 #### 🖨️ Print Orders
 
-**Kids Journal — 28,702 units**
-All channels combined fall **13,873 units short** of covering May–January demand plus a 30-day buffer (75,813 available vs 89,686 needed). Peak month is Dec at 20,248 units globally. Printing:
+**Kids Journal — 26,134 units**
+All channels combined fall **11,304 units short** of covering May–January demand plus a 30-day buffer (75,813 available vs 87,117 needed). Peak month is Dec at 20,248 units globally. Printing:
   - **20,843 units** → Amazon US FBA *(direct from printer)*
-  - **4,830 units** → Amazon CA FBA *(direct from printer)*
+  - **2,262 units** → Amazon CA FBA *(direct from printer)*
   - **3,029 units** → US Shopify *(direct from printer)*
 
-**Know Me If You Can Cards — 6,730 units**
-All channels combined fall **5,805 units short** of covering May–January demand plus a 30-day buffer (34,177 available vs 39,982 needed). Peak month is Nov at 14,995 units globally. Printing:
-  - **2,642 units** → Amazon CA FBA *(direct from printer)*
+**Know Me If You Can Cards — 5,409 units**
+All channels combined fall **4,484 units short** of covering May–January demand plus a 30-day buffer (34,177 available vs 38,661 needed). Peak month is Nov at 14,995 units globally. Printing:
+  - **1,321 units** → Amazon CA FBA *(direct from printer)*
   - **1,095 units** → CA Shopify *(direct from printer)*
   - **607 units** → UK *(direct from printer)*
   - **35 units** → EU *(direct from printer)*
@@ -30,25 +30,23 @@ All channels combined fall **5,805 units short** of covering May–January deman
 
 #### 📦 Hub→FBA Transfers *(reposition surplus, no print needed)*
 
-**Teen Journal** — globally covered (+25,717 units ahead), but FBA channels are light. Transferring hub surplus:
+**Teen Journal** — globally covered (+27,723 units ahead), but FBA channels are light. Transferring hub surplus:
   - 1,038 units: US Hub → Amazon US FBA
 
-**Sharing Joy Conversation Cards** — globally covered (+2,408 units ahead), but FBA channels are light. Transferring hub surplus:
-  - 1,961 units: CA Hub → Amazon CA FBA
+**Sharing Joy Conversation Cards** — globally covered (+3,839 units ahead), but FBA channels are light. Transferring hub surplus:
+  - 1,431 units: CA Hub → Amazon CA FBA
 
-**Daily Journal (Teal)** — globally covered (+8,903 units ahead), but FBA channels are light. Transferring hub surplus:
+**Daily Journal (Teal)** — globally covered (+10,331 units ahead), but FBA channels are light. Transferring hub surplus:
   - 10,185 units: US Hub → Amazon US FBA
-  - 1,429 units: CA Hub → Amazon CA FBA
 
-**Daily Journal (Green)** — globally covered (+39,026 units ahead), but FBA channels are light. Transferring hub surplus:
+**Daily Journal (Green)** — globally covered (+39,503 units ahead), but FBA channels are light. Transferring hub surplus:
   - 6,078 units: US Hub → Amazon US FBA
-  - 954 units: CA Hub → Amazon CA FBA
+  - 477 units: CA Hub → Amazon CA FBA
 
-**Adult Journal** — globally covered (+35,440 units ahead), but FBA channels are light. Transferring hub surplus:
+**Adult Journal** — globally covered (+35,631 units ahead), but FBA channels are light. Transferring hub surplus:
   - 5,302 units: US Hub → Amazon US FBA
-  - 190 units: CA Hub → Amazon CA FBA
 
-**Dream Affirmation Cards** — globally covered (+11,747 units ahead), but FBA channels are light. Transferring hub surplus:
+**Dream Affirmation Cards** — globally covered (+12,764 units ahead), but FBA channels are light. Transferring hub surplus:
   - 3,514 units: US Hub → Amazon US FBA
   - 440 units: CA Hub → Amazon CA FBA
 
@@ -56,11 +54,10 @@ All channels combined fall **5,805 units short** of covering May–January deman
 
 **Teen Journal:**
   - **7,032 units** → Amazon US FBA
-  - **2,750 units** → Amazon CA FBA
+  - **744 units** → Amazon CA FBA
 
 **Sharing Joy Conversation Cards:**
   - **1,401 units** → Amazon US FBA
-  - **901 units** → Amazon CA FBA
   - **2,514 units** → US Shopify
   - **430 units** → AU
 
@@ -68,7 +65,7 @@ All channels combined fall **5,805 units short** of covering May–January deman
   - **1,797 units** → AU
 
 **Dream Affirmation Cards:**
-  - **1,593 units** → Amazon CA FBA
+  - **576 units** → Amazon CA FBA
 
 #### ✈️ International Transfers *(UK surplus → AU/EU)*
 
@@ -85,14 +82,14 @@ All channels combined fall **5,805 units short** of covering May–January deman
 
 | SKU | Decision | Units | Notes |
 | :--- | :--- | ---: | :--- |
-| Kids Journal | 🖨️ Print run | 28,702 | Globally short 13,873 units · 5,066 UK→intl |
-| Teen Journal | 📦 Transfer + 🖨️ top-up print | 10,820 | 1,038 transfer · 9,782 top-up print |
-| Sharing Joy Conversation Cards | 📦 Transfer + 🖨️ top-up print | 7,207 | 1,961 transfer · 5,246 top-up print |
-| Daily Journal (Teal) | 📦 Transfer + 🖨️ top-up print | 13,412 | 11,615 transfer · 1,797 top-up print · 1,221 UK→intl |
-| Daily Journal (Green) | 📦 Hub→FBA transfer | 7,032 | Globally sufficient |
-| Adult Journal | 📦 Hub→FBA transfer | 5,493 | Globally sufficient |
-| Dream Affirmation Cards | 📦 Transfer + 🖨️ top-up print | 5,547 | 3,954 transfer · 1,593 top-up print · 523 UK→intl |
-| Know Me If You Can Cards | 🖨️ Print run | 6,730 | Globally short 5,805 units |
+| Kids Journal | 🖨️ Print run | 26,134 | Globally short 11,304 units · 5,066 UK→intl |
+| Teen Journal | 📦 Transfer + 🖨️ top-up print | 8,814 | 1,038 transfer · 7,776 top-up print |
+| Sharing Joy Conversation Cards | 📦 Transfer + 🖨️ top-up print | 5,776 | 1,431 transfer · 4,345 top-up print |
+| Daily Journal (Teal) | 📦 Transfer + 🖨️ top-up print | 11,982 | 10,185 transfer · 1,797 top-up print · 1,221 UK→intl |
+| Daily Journal (Green) | 📦 Hub→FBA transfer | 6,555 | Globally sufficient |
+| Adult Journal | 📦 Hub→FBA transfer | 5,302 | Globally sufficient |
+| Dream Affirmation Cards | 📦 Transfer + 🖨️ top-up print | 4,530 | 3,954 transfer · 576 top-up print · 523 UK→intl |
+| Know Me If You Can Cards | 🖨️ Print run | 5,409 | Globally short 4,484 units |
 
 ---
 
@@ -144,16 +141,16 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 ### Kids Journal `EIDJ4100`
 
-**🖨️ Print 28,702 units** — Short **13,873 units** globally — 75,813 available vs 89,686 needed
+**🖨️ Print 26,134 units** — Short **11,304 units** globally — 75,813 available vs 87,117 needed
 
-> ⚠️ **Globally short 13,873 units** (stock: 75,813 · need: 89,686)
+> ⚠️ **Globally short 11,304 units** (stock: 75,813 · need: 87,117)
 
 **What needs to happen — and when:**
 
 | Priority | Action | Units | Order / Ship By | Arrives / Done By | Without This Action |
 | :---: | :--- | ---: | :--- | :--- | :--- |
 | 🚨 | 🖨️ Print → Amazon US FBA | 20,843 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout Jun |
-| 🚨 | 🖨️ Print → Amazon CA FBA | 4,830 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout May |
+| 🚨 | 🖨️ Print → Amazon CA FBA | 2,262 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout May |
 | 🚨 | 🖨️ Print → US Shopify | 3,029 | Order **NOW** (May 2026) | At destination warehouse by Aug 2026 | 🚨 Stockout Jan |
 | 🚨 | 📦 Transfer UK → AU | 5,066 | Ship **now** (ASAP) | At AU ~Jul 2026 | 🚨 Stockout Nov |
 
@@ -162,7 +159,7 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 | Channel | On Hand | Action | Starting | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Buffer | ✓ |
 | :--- | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
 | Amazon US FBA | 1,935 | +20,843 print | 22,778 | 20,946 | 19,602 | 18,020 | 16,564 | 15,044 | 13,699 | 11,523 | 4,661 | **1,934** | 1,934 | ✅ |
-| Amazon CA FBA | 0 | +306 supplier; +4,830 print | 5,137 | 4,471 | 4,055 | 3,831 | 3,492 | 3,255 | 3,078 | 1,985 | 707 | **270** | 270 | ✅ |
+| Amazon CA FBA | 0 | +306 supplier; +2,262 print | 2,568 | 2,235 | 2,027 | 1,915 | 1,746 | 1,627 | 1,539 | 992 | 353 | **135** | 135 | ✅ |
 | US Shopify (hubs) | 22,728 | +3,029 print | 25,757 | 23,583 | 22,369 | 21,558 | 20,504 | 19,482 | 18,585 | 11,886 | 3,892 | **1,197** | 1,197 | ✅ |
 | CA Shopify (CA hub) | 3,184 | +1,953 supplier | 5,137 | 4,471 | 4,055 | 3,831 | 3,492 | 3,255 | 3,078 | 1,985 | 707 | **270** | 270 | ✅ |
 | UK | 33,137 | −5,066→AU | 28,071 | 27,225 | 26,694 | 25,895 | 25,511 | 25,133 | 24,802 | 21,675 | 19,648 | **15,410** | 796 | ✅ |
@@ -171,17 +168,17 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 **Full justification:**
 
-- **Why we're printing:** All 7 channels combined hold **75,813 units** against a total need of **89,686** (May–Jan demand + 30-day buffer per channel) — a **13,873 unit deficit**. There is no transfer fix: stock is short across channels, so new supply from the printer is the only solution. Peak demand hits **Dec** at 20,248 units globally.
+- **Why we're printing:** All 7 channels combined hold **75,813 units** against a total need of **87,117** (May–Jan demand + 30-day buffer per channel) — a **11,304 unit deficit**. There is no transfer fix: stock is short across channels, so new supply from the printer is the only solution. Peak demand hits **Dec** at 20,248 units globally.
 - **Why print direct to each destination (not through a hub):** Routing through a hub adds 2–4 weeks of handling and delays FBA inbound. New prints are shipped directly from the factory — FBA shipments use Amazon's inbound address, AU/EU prints go straight to those warehouses. This is the fastest path from printer to sellable inventory.
 - **Lead time math:** 4–8 weeks production + 4–6 weeks ocean transit = **8–14 weeks total** from order date to shelf. An order placed **May 2026** arrives **July–August 2026**. For FBA: add 2–4 weeks Amazon inbound processing → stock live in FBA **September–October**, just before November peak. Every week of delay pushes the arrival date further into peak season.
 - **Per-channel gap breakdown (how each destination's print qty was calculated):**
   - **Amazon US FBA:** on hand 1,935 · needs 22,778 (demand 20,844 + 30-day buffer 1,934) → gap 20,843 → print **20,843** direct
-  - **Amazon CA FBA:** on hand 0 · needs 5,137 (demand 4,867 + 30-day buffer 270) → gap 5,137 → print **4,830** direct
+  - **Amazon CA FBA:** on hand 0 · needs 2,568 (demand 2,433 + 30-day buffer 135) → gap 2,568 → print **2,262** direct
   - **US Shopify:** on hand 22,728 · needs 25,757 (demand 24,560 + 30-day buffer 1,197) → gap 3,029 → print **3,029** direct
 - **Without this print run — what breaks and when:**
   - **Amazon US FBA** → 🚨 Stockout Jun — zero inventory, customers see out-of-stock listing
-  - **Amazon CA FBA** → 🚨 Stockout May — zero inventory, customers see out-of-stock listing
   - **US Shopify** → 🚨 Stockout Jan — zero inventory, customers see out-of-stock listing
+  - **Amazon CA FBA** → 🚨 Stockout May — zero inventory, customers see out-of-stock listing
 
 #### Monthly Demand Forecast
 
@@ -215,16 +212,16 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 ### Teen Journal `EIDJ2100`
 
-**📦 Hub Transfers + 🖨️ Top-Up Prints** — Surplus **+25,717** globally — 1,038 repositioned to FBA · 9,782 top-up printed
+**📦 Hub Transfers + 🖨️ Top-Up Prints** — Surplus **+27,723** globally — 1,038 repositioned to FBA · 7,776 top-up printed
 
-> ✅ **Globally sufficient · +25,717 surplus** (stock: 84,718 · need: 59,001)
+> ✅ **Globally sufficient · +27,723 surplus** (stock: 84,718 · need: 56,995)
 
 **What needs to happen — and when:**
 
 | Priority | Action | Units | Order / Ship By | Arrives / Done By | Without This Action |
 | :---: | :--- | ---: | :--- | :--- | :--- |
 | 🚨 | 🖨️ Top-up → Amazon US FBA | 7,032 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout Dec |
-| 🚨 | 🖨️ Top-up → Amazon CA FBA | 2,750 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout Sep |
+| 🚨 | 🖨️ Top-up → Amazon CA FBA | 744 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout Dec |
 | ⚠️ | 📦 Transfer US Hub → Amazon US FBA | 1,038 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | ⚠️ Below buffer Jan |
 
 *Starting = stock after all transfers / supplier / print runs arrive. Monthly columns = ending balance after cumulative demand is deducted. **Jan must end ≥ Buffer.***
@@ -232,7 +229,7 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 | Channel | On Hand | Action | Starting | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Buffer | ✓ |
 | :--- | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
 | Amazon US FBA | 10,284 | +1,038 from US Hub; +7,032 top-up | 18,354 | 16,474 | 14,803 | 13,501 | 12,210 | 10,751 | 9,863 | 7,881 | 3,023 | **1,310** | 1,310 | ✅ |
-| Amazon CA FBA | 0 | +1,261 supplier; +2,750 top-up | 4,012 | 3,791 | 3,216 | 2,963 | 2,782 | 2,532 | 2,365 | 1,628 | 876 | **175** | 175 | ✅ |
+| Amazon CA FBA | 0 | +1,261 supplier; +744 top-up | 2,006 | 1,895 | 1,608 | 1,481 | 1,391 | 1,266 | 1,182 | 814 | 438 | **87** | 87 | ✅ |
 | US Shopify (hubs) | 14,693 | −1,038→US FBA | 13,654 | 12,600 | 11,601 | 10,576 | 9,928 | 9,224 | 8,371 | 6,603 | 1,861 | **623** | 623 | ✅ |
 | CA Shopify (CA hub) | 1,723 | +2,289 supplier | 4,012 | 3,791 | 3,216 | 2,963 | 2,782 | 2,532 | 2,365 | 1,628 | 876 | **175** | 175 | ✅ |
 | UK | 41,324 | — | 41,324 | 40,627 | 40,101 | 39,733 | 39,506 | 39,225 | 38,879 | 37,619 | 35,238 | **33,699** | 864 | ✅ |
@@ -241,11 +238,11 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 **Full justification:**
 
-- **Why no print run:** 84,718 units available vs 59,001 needed globally = **+25,717 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Dec** at 14,818 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
+- **Why no print run:** 84,718 units available vs 56,995 needed globally = **+27,723 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Dec** at 14,818 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
 - **US hub math (HBG/SLI/SAV/KCM):** hold 14,693 units total. US Shopify must keep 13,654 reserved (demand 13,031 + buffer 623). **Surplus above Shopify reserve: 1,039.** Transfer **1,038** → Amazon US FBA. Rationale: hub stock sitting in HBG/SLI doesn't appear on Amazon — it has to be in FBA to be sellable on that channel.
 - **CA hub:** holds 1,723 — fully reserved for CA Shopify (needs 4,012). No surplus for CA FBA.
 - **Why top-up print for Amazon US FBA (+7,032):** US hub surplus was **1,039** — transferred 1,038 to US FBA. US FBA still needs 7,032 more. UK→US warehouse routing is not a confirmed lane, so a direct print run fills the remaining gap. After top-up: 18,354 units vs need 18,354. Without it: Stockout Dec.
-- **Why top-up print for Amazon CA FBA (+2,750):** CA hub surplus was only **0** — fully used up transferring to CA FBA. CA FBA still needs 2,750 more units that have no transfer source. Print direct to CA FBA is the only remaining option. After top-up: 4,012 units vs need 4,012. Without it: Stockout Sep.
+- **Why top-up print for Amazon CA FBA (+744):** CA hub surplus was only **0** — fully used up transferring to CA FBA. CA FBA still needs 744 more units that have no transfer source. Print direct to CA FBA is the only remaining option. After top-up: 2,006 units vs need 2,006. Without it: Stockout Dec.
 - **Why September 1 is the transfer deadline:** Amazon FBA inbound processing takes 2–4 weeks after the shipment is received at an Amazon fulfillment center. Our peak month is November. For stock to be **available and sellable on November 1**, it must be **checked into FBA by October 1**. Working backwards: ship from the hub or warehouse by **September 1**. Stock that arrives after mid-October is at serious risk of missing peak entirely — Amazon may not process it before Black Friday.
 - **Canada supplier stock (3,551 units):** Geography-restricted — these units can only ship to CA-region warehouses (CA hub and Amazon CA FBA). They cannot be rerouted to fill US or international gaps regardless of need.
 
@@ -281,17 +278,16 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 ### Sharing Joy Conversation Cards `EIDC2000`
 
-**📦 Hub Transfers + 🖨️ Top-Up Prints** — Surplus **+2,408** globally — 1,961 repositioned to FBA · 5,246 top-up printed
+**📦 Hub Transfers + 🖨️ Top-Up Prints** — Surplus **+3,839** globally — 1,431 repositioned to FBA · 4,345 top-up printed
 
-> ✅ **Globally sufficient · +2,408 surplus** (stock: 59,022 · need: 56,614)
+> ✅ **Globally sufficient · +3,839 surplus** (stock: 59,022 · need: 55,183)
 
 **What needs to happen — and when:**
 
 | Priority | Action | Units | Order / Ship By | Arrives / Done By | Without This Action |
 | :---: | :--- | ---: | :--- | :--- | :--- |
-| 🚨 | 📦 Transfer CA Hub → Amazon CA FBA | 1,961 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout Sep |
+| 🚨 | 📦 Transfer CA Hub → Amazon CA FBA | 1,431 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout May |
 | 🚨 | 🖨️ Top-up → Amazon US FBA | 1,401 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout Jan |
-| 🚨 | 🖨️ Top-up → Amazon CA FBA | 901 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout Dec |
 | 🚨 | 🖨️ Top-up → US Shopify | 2,514 | Order **NOW** (May 2026) | At destination warehouse by Aug 2026 | 🚨 Stockout Jan |
 | 🚨 | 🖨️ Top-up → AU | 430 | Order **NOW** (May 2026) | At destination warehouse by Aug 2026 | 🚨 Stockout Jan |
 
@@ -300,20 +296,19 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 | Channel | On Hand | Action | Starting | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Buffer | ✓ |
 | :--- | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
 | Amazon US FBA | 9,662 | +5,500 supplier; +1,401 top-up | 16,563 | 15,188 | 14,046 | 12,981 | 12,128 | 11,509 | 10,563 | 8,521 | 4,685 | **1,250** | 1,250 | ✅ |
-| Amazon CA FBA | 0 | +1,961 from CA Hub; +901 top-up | 2,863 | 2,641 | 2,427 | 2,226 | 2,151 | 1,870 | 1,665 | 1,162 | 592 | **165** | 165 | ✅ |
+| Amazon CA FBA | 0 | +1,431 from CA Hub | 1,431 | 1,320 | 1,213 | 1,113 | 1,075 | 935 | 832 | 581 | 296 | **82** | 82 | ✅ |
 | US Shopify (hubs) | 18,064 | +2,514 top-up | 20,578 | 19,437 | 18,276 | 17,337 | 16,685 | 15,220 | 13,688 | 11,395 | 6,753 | **1,419** | 1,419 | ✅ |
-| CA Shopify (CA hub) | 4,825 | −1,961→CA FBA | 2,863 | 2,641 | 2,427 | 2,226 | 2,151 | 1,870 | 1,665 | 1,162 | 592 | **165** | 165 | ✅ |
+| CA Shopify (CA hub) | 4,825 | −1,431→CA FBA | 3,393 | 3,171 | 2,957 | 2,756 | 2,681 | 2,400 | 2,195 | 1,692 | 1,122 | **695** | 165 | ✅ |
 | UK | 10,071 | — | 10,071 | 10,063 | 10,044 | 10,031 | 10,023 | 9,747 | 9,543 | 7,197 | 5,440 | **4,714** | 203 | ✅ |
 | EU | 4,523 | — | 4,523 | 4,514 | 4,504 | 4,481 | 4,474 | 4,467 | 4,455 | 3,886 | 3,261 | **3,187** | 43 | ✅ |
 | AU | 6,377 | +430 top-up | 6,807 | 6,366 | 5,870 | 5,391 | 5,048 | 4,567 | 3,884 | 2,503 | 1,309 | **397** | 397 | ✅ |
 
 **Full justification:**
 
-- **Why no print run:** 59,022 units available vs 56,614 needed globally = **+2,408 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Dec** at 11,695 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
+- **Why no print run:** 59,022 units available vs 55,183 needed globally = **+3,839 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Dec** at 11,695 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
 - **US hubs:** hold 18,064 — fully reserved for US Shopify (needs 20,578). Zero surplus available for FBA.
-- **CA hub math:** holds 4,825. CA Shopify must keep 2,863 reserved (demand 2,698 + buffer 165). **Surplus: 1,962.** Transfer **1,961** → Amazon CA FBA.
+- **CA hub math:** holds 4,825. CA Shopify must keep 2,863 reserved (demand 2,698 + buffer 165). **Surplus: 1,962.** Transfer **1,431** → Amazon CA FBA.
 - **Why top-up print for Amazon US FBA (+1,401):** US hub surplus was **0** — transferred 0 to US FBA. US FBA still needs 1,401 more. UK→US warehouse routing is not a confirmed lane, so a direct print run fills the remaining gap. After top-up: 16,563 units vs need 16,563. Without it: Stockout Jan.
-- **Why top-up print for Amazon CA FBA (+901):** CA hub surplus was only **1,962** — fully used up transferring to CA FBA. CA FBA still needs 901 more units that have no transfer source. Print direct to CA FBA is the only remaining option. After top-up: 2,863 units vs need 2,863. Without it: Stockout Dec.
 - **Why top-up print for US Shopify (+2,514):** US hubs are short on their own Shopify demand — the hub stock doesn't even cover Shopify, let alone FBA. Need 2,514 additional units printed direct to the US hub network. After top-up: 20,578 units vs need 20,578. Without it: Stockout Jan.
 - **Why top-up print for AU (+430):** Cards **cannot use the UK→AU route** — only journal SKUs are approved for that shipping lane. No other transfer source covers AU for card SKUs. A direct print run to AU is the only available option. After top-up: 6,807 units vs need 6,807. Without it: Stockout Jan.
 - **Why September 1 is the transfer deadline:** Amazon FBA inbound processing takes 2–4 weeks after the shipment is received at an Amazon fulfillment center. Our peak month is November. For stock to be **available and sellable on November 1**, it must be **checked into FBA by October 1**. Working backwards: ship from the hub or warehouse by **September 1**. Stock that arrives after mid-October is at serious risk of missing peak entirely — Amazon may not process it before Black Friday.
@@ -351,9 +346,9 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 ### Daily Journal (Teal) `EIDJ5100`
 
-**📦 Hub Transfers + 🖨️ Top-Up Prints** — Surplus **+8,903** globally — 11,614 repositioned to FBA · 1,797 top-up printed
+**📦 Hub Transfers + 🖨️ Top-Up Prints** — Surplus **+10,331** globally — 10,185 repositioned to FBA · 1,797 top-up printed
 
-> ✅ **Globally sufficient · +8,903 surplus** (stock: 61,237 · need: 52,334)
+> ✅ **Globally sufficient · +10,331 surplus** (stock: 61,201 · need: 50,870)
 
 **What needs to happen — and when:**
 
@@ -361,7 +356,6 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 | :---: | :--- | ---: | :--- | :--- | :--- |
 | 🚨 | 📦 Transfer UK → AU | 1,221 | Ship **now** (ASAP) | At AU ~Jul 2026 | 🚨 Stockout Dec |
 | 🚨 | 📦 Transfer US Hub → Amazon US FBA | 10,185 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout Jun |
-| 🚨 | 📦 Transfer CA Hub → Amazon CA FBA | 1,429 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout Oct |
 | 🚨 | 🖨️ Top-up → AU | 1,797 | Order **NOW** (May 2026) | At destination warehouse by Aug 2026 | 🚨 Stockout Dec |
 
 *Starting = stock after all transfers / supplier / print runs arrive. Monthly columns = ending balance after cumulative demand is deducted. **Jan must end ≥ Buffer.***
@@ -369,18 +363,18 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 | Channel | On Hand | Action | Starting | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Buffer | ✓ |
 | :--- | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
 | Amazon US FBA | 1,050 | +10,185 from US Hub | 11,235 | 10,499 | 9,763 | 8,716 | 7,809 | 6,940 | 6,144 | 4,741 | 1,921 | **839** | 839 | ✅ |
-| Amazon CA FBA | 0 | +1,429 from CA Hub; +1,500 supplier | 2,929 | 2,456 | 2,222 | 1,986 | 1,782 | 1,455 | 1,271 | 899 | 463 | **207** | 207 | ✅ |
+| Amazon CA FBA | 0 | +1,464 supplier | 1,464 | 1,228 | 1,111 | 993 | 891 | 727 | 635 | 449 | 231 | **103** | 103 | ✅ |
 | US Shopify (hubs) | 34,801 | −10,185→US FBA | 24,615 | 23,256 | 22,511 | 21,175 | 19,790 | 18,601 | 17,763 | 16,161 | 12,268 | **11,031** | 688 | ✅ |
-| CA Shopify (CA hub) | 4,526 | −1,429→CA FBA | 3,096 | 2,623 | 2,389 | 2,153 | 1,949 | 1,622 | 1,438 | 1,066 | 630 | **374** | 207 | ✅ |
+| CA Shopify (CA hub) | 4,526 | — | 4,526 | 4,053 | 3,819 | 3,583 | 3,379 | 3,052 | 2,868 | 2,496 | 2,060 | **1,804** | 207 | ✅ |
 | UK | 12,161 | −1,221→AU | 10,939 | 10,661 | 10,424 | 9,852 | 8,419 | 7,005 | 5,923 | 4,380 | 2,007 | **682** | 682 | ✅ |
 | EU | 958 | — | 958 | 934 | 915 | 835 | 798 | 764 | 730 | 557 | 368 | **251** | 61 | ✅ |
 | AU | 6,241 | +1,221 from UK; +1,797 top-up | 9,260 | 8,428 | 7,599 | 6,527 | 5,752 | 4,995 | 4,353 | 2,575 | 918 | **451** | 451 | ✅ |
 
 **Full justification:**
 
-- **Why no print run:** 61,237 units available vs 52,334 needed globally = **+8,903 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Dec** at 11,179 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
+- **Why no print run:** 61,201 units available vs 50,870 needed globally = **+10,331 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Dec** at 11,179 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
 - **US hub math (HBG/SLI/SAV/KCM):** hold 34,801 units total. US Shopify must keep 14,272 reserved (demand 13,584 + buffer 688). **Surplus above Shopify reserve: 20,529.** Transfer **10,185** → Amazon US FBA. Rationale: hub stock sitting in HBG/SLI doesn't appear on Amazon — it has to be in FBA to be sellable on that channel.
-- **CA hub math:** holds 4,526. CA Shopify must keep 2,929 reserved (demand 2,722 + buffer 207). **Surplus: 1,597.** Transfer **1,429** → Amazon CA FBA.
+- **CA hub math:** holds 4,526. CA Shopify must keep 2,929 reserved (demand 2,722 + buffer 207). **Surplus: 1,597.**
 - **UK → AU transfer:** UK holds 12,161 with only 10,939 needed locally (demand 10,257 + buffer 682) — surplus 1,222 units sitting idle in UK. Transfer **1,221** to fill AU shortfall. Journals are approved for UK→AU ocean freight. Allow 3–4 weeks for ocean transit + customs clearance.
 - **Why top-up print for AU (+1,797):** All transfer routes are exhausted — 1,797 unit gap has no transfer source After top-up: 9,260 units vs need 9,260. Without it: Stockout Dec.
 - **Why September 1 is the transfer deadline:** Amazon FBA inbound processing takes 2–4 weeks after the shipment is received at an Amazon fulfillment center. Our peak month is November. For stock to be **available and sellable on November 1**, it must be **checked into FBA by October 1**. Working backwards: ship from the hub or warehouse by **September 1**. Stock that arrives after mid-October is at serious risk of missing peak entirely — Amazon may not process it before Black Friday.
@@ -418,34 +412,34 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 ### Daily Journal (Green) `EIDJ5200`
 
-**📦 Hub→FBA Repositioning** — Surplus **+39,026** globally — 7,032 units repositioned from hubs to FBA
+**📦 Hub→FBA Repositioning** — Surplus **+39,503** globally — 6,555 units repositioned from hubs to FBA
 
-> ✅ **Globally sufficient · +39,026 surplus** (stock: 62,275 · need: 23,249)
+> ✅ **Globally sufficient · +39,503 surplus** (stock: 62,275 · need: 22,772)
 
 **What needs to happen — and when:**
 
 | Priority | Action | Units | Order / Ship By | Arrives / Done By | Without This Action |
 | :---: | :--- | ---: | :--- | :--- | :--- |
 | 🚨 | 📦 Transfer US Hub → Amazon US FBA | 6,078 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout Jun |
-| 🚨 | 📦 Transfer CA Hub → Amazon CA FBA | 954 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout May |
+| 🚨 | 📦 Transfer CA Hub → Amazon CA FBA | 477 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout May |
 
 *Starting = stock after all transfers / supplier / print runs arrive. Monthly columns = ending balance after cumulative demand is deducted. **Jan must end ≥ Buffer.***
 
 | Channel | On Hand | Action | Starting | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Buffer | ✓ |
 | :--- | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
 | Amazon US FBA | 1,118 | +6,078 from US Hub | 7,196 | 6,710 | 6,036 | 5,408 | 4,778 | 4,327 | 3,794 | 2,842 | 943 | **438** | 438 | ✅ |
-| Amazon CA FBA | 0 | +954 from CA Hub | 954 | 821 | 749 | 674 | 608 | 533 | 474 | 322 | 172 | **73** | 73 | ✅ |
+| Amazon CA FBA | 0 | +477 from CA Hub | 477 | 410 | 374 | 337 | 304 | 266 | 237 | 161 | 86 | **36** | 36 | ✅ |
 | US Shopify (hubs) | 19,209 | −6,078→US FBA | 13,131 | 12,449 | 12,169 | 11,724 | 11,278 | 10,928 | 10,563 | 9,560 | 8,273 | **7,821** | 358 | ✅ |
-| CA Shopify (CA hub) | 4,274 | −954→CA FBA | 3,320 | 3,187 | 3,115 | 3,040 | 2,974 | 2,899 | 2,840 | 2,688 | 2,538 | **2,439** | 73 | ✅ |
+| CA Shopify (CA hub) | 4,274 | −477→CA FBA | 3,797 | 3,664 | 3,592 | 3,517 | 3,451 | 3,376 | 3,317 | 3,165 | 3,015 | **2,916** | 73 | ✅ |
 | UK | 31,861 | — | 31,861 | 31,098 | 30,903 | 30,649 | 30,329 | 29,981 | 29,631 | 29,020 | 28,026 | **27,343** | 480 | ✅ |
 | EU | 938 | — | 938 | 873 | 817 | 717 | 691 | 675 | 657 | 547 | 436 | **379** | 23 | ✅ |
 | AU | 4,875 | — | 4,875 | 4,587 | 4,342 | 3,990 | 3,759 | 3,537 | 3,348 | 2,737 | 2,325 | **2,134** | 155 | ✅ |
 
 **Full justification:**
 
-- **Why no print run:** 62,275 units available vs 23,249 needed globally = **+39,026 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Dec** at 4,700 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
+- **Why no print run:** 62,275 units available vs 22,772 needed globally = **+39,503 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Dec** at 4,700 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
 - **US hub math (HBG/SLI/SAV/KCM):** hold 19,209 units total. US Shopify must keep 5,668 reserved (demand 5,310 + buffer 358). **Surplus above Shopify reserve: 13,541.** Transfer **6,078** → Amazon US FBA. Rationale: hub stock sitting in HBG/SLI doesn't appear on Amazon — it has to be in FBA to be sellable on that channel.
-- **CA hub math:** holds 4,274. CA Shopify must keep 954 reserved (demand 881 + buffer 73). **Surplus: 3,320.** Transfer **954** → Amazon CA FBA.
+- **CA hub math:** holds 4,274. CA Shopify must keep 954 reserved (demand 881 + buffer 73). **Surplus: 3,320.** Transfer **477** → Amazon CA FBA.
 - **Why September 1 is the transfer deadline:** Amazon FBA inbound processing takes 2–4 weeks after the shipment is received at an Amazon fulfillment center. Our peak month is November. For stock to be **available and sellable on November 1**, it must be **checked into FBA by October 1**. Working backwards: ship from the hub or warehouse by **September 1**. Stock that arrives after mid-October is at serious risk of missing peak entirely — Amazon may not process it before Black Friday.
 
 #### Monthly Demand Forecast
@@ -480,34 +474,33 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 ### Adult Journal `EIDJ5000`
 
-**📦 Hub→FBA Repositioning** — Surplus **+35,440** globally — 5,492 units repositioned from hubs to FBA
+**📦 Hub→FBA Repositioning** — Surplus **+35,631** globally — 5,302 units repositioned from hubs to FBA
 
-> ✅ **Globally sufficient · +35,440 surplus** (stock: 63,514 · need: 28,074)
+> ✅ **Globally sufficient · +35,631 surplus** (stock: 62,873 · need: 27,242)
 
 **What needs to happen — and when:**
 
 | Priority | Action | Units | Order / Ship By | Arrives / Done By | Without This Action |
 | :---: | :--- | ---: | :--- | :--- | :--- |
 | 🚨 | 📦 Transfer US Hub → Amazon US FBA | 5,302 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout May |
-| 🚨 | 📦 Transfer CA Hub → Amazon CA FBA | 190 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout Jan |
 
 *Starting = stock after all transfers / supplier / print runs arrive. Monthly columns = ending balance after cumulative demand is deducted. **Jan must end ≥ Buffer.***
 
 | Channel | On Hand | Action | Starting | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Buffer | ✓ |
 | :--- | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
 | Amazon US FBA | 415 | +5,302 from US Hub | 5,717 | 5,128 | 4,708 | 4,279 | 3,892 | 3,579 | 3,306 | 2,801 | 1,194 | **289** | 289 | ✅ |
-| Amazon CA FBA | 0 | +190 from CA Hub; +1,472 supplier | 1,662 | 1,573 | 1,490 | 1,417 | 1,385 | 1,328 | 1,289 | 939 | 573 | **73** | 73 | ✅ |
+| Amazon CA FBA | 0 | +831 supplier | 831 | 786 | 745 | 708 | 692 | 664 | 644 | 469 | 286 | **36** | 36 | ✅ |
 | US Shopify (hubs) | 37,634 | −5,302→US FBA | 32,331 | 31,866 | 31,497 | 31,166 | 30,967 | 30,804 | 30,480 | 29,579 | 26,725 | **25,238** | 156 | ✅ |
-| CA Shopify (CA hub) | 4,929 | −190→CA FBA | 4,738 | 4,649 | 4,566 | 4,493 | 4,461 | 4,404 | 4,365 | 4,015 | 3,649 | **3,149** | 73 | ✅ |
+| CA Shopify (CA hub) | 4,929 | — | 4,929 | 4,840 | 4,757 | 4,684 | 4,652 | 4,595 | 4,556 | 4,206 | 3,840 | **3,340** | 73 | ✅ |
 | UK | 11,565 | — | 11,565 | 11,018 | 10,494 | 10,171 | 9,912 | 9,726 | 9,411 | 8,276 | 5,434 | **4,673** | 224 | ✅ |
 | EU | 1,599 | — | 1,599 | 1,574 | 1,522 | 1,164 | 1,158 | 1,144 | 1,136 | 1,069 | 994 | **922** | 30 | ✅ |
 | AU | 5,900 | — | 5,900 | 5,641 | 5,415 | 5,206 | 5,058 | 4,913 | 4,797 | 4,143 | 2,742 | **2,085** | 142 | ✅ |
 
 **Full justification:**
 
-- **Why no print run:** 63,514 units available vs 28,074 needed globally = **+35,440 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Dec** at 9,070 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
+- **Why no print run:** 62,873 units available vs 27,242 needed globally = **+35,631 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Dec** at 9,070 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
 - **US hub math (HBG/SLI/SAV/KCM):** hold 37,634 units total. US Shopify must keep 7,249 reserved (demand 7,093 + buffer 156). **Surplus above Shopify reserve: 30,385.** Transfer **5,302** → Amazon US FBA. Rationale: hub stock sitting in HBG/SLI doesn't appear on Amazon — it has to be in FBA to be sellable on that channel.
-- **CA hub math:** holds 4,929. CA Shopify must keep 1,662 reserved (demand 1,589 + buffer 73). **Surplus: 3,267.** Transfer **190** → Amazon CA FBA.
+- **CA hub math:** holds 4,929. CA Shopify must keep 1,662 reserved (demand 1,589 + buffer 73). **Surplus: 3,267.**
 - **Why September 1 is the transfer deadline:** Amazon FBA inbound processing takes 2–4 weeks after the shipment is received at an Amazon fulfillment center. Our peak month is November. For stock to be **available and sellable on November 1**, it must be **checked into FBA by October 1**. Working backwards: ship from the hub or warehouse by **September 1**. Stock that arrives after mid-October is at serious risk of missing peak entirely — Amazon may not process it before Black Friday.
 - **Canada supplier stock (1,472 units):** Geography-restricted — these units can only ship to CA-region warehouses (CA hub and Amazon CA FBA). They cannot be rerouted to fill US or international gaps regardless of need.
 
@@ -543,9 +536,9 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 ### Dream Affirmation Cards `EIDC2101`
 
-**📦 Hub Transfers + 🖨️ Top-Up Prints** — Surplus **+11,747** globally — 3,954 repositioned to FBA · 1,593 top-up printed
+**📦 Hub Transfers + 🖨️ Top-Up Prints** — Surplus **+12,764** globally — 3,954 repositioned to FBA · 576 top-up printed
 
-> ✅ **Globally sufficient · +11,747 surplus** (stock: 43,091 · need: 31,344)
+> ✅ **Globally sufficient · +12,764 surplus** (stock: 43,091 · need: 30,327)
 
 **What needs to happen — and when:**
 
@@ -553,15 +546,15 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 | :---: | :--- | ---: | :--- | :--- | :--- |
 | 🚨 | 📦 Transfer UK → EU | 523 | Ship **now** (ASAP) | At EU ~Jul 2026 | 🚨 Stockout Dec |
 | 🚨 | 📦 Transfer US Hub → Amazon US FBA | 3,514 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout Sep |
-| 🚨 | 📦 Transfer CA Hub → Amazon CA FBA | 440 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout Dec |
-| 🚨 | 🖨️ Top-up → Amazon CA FBA | 1,593 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout Sep |
+| 🚨 | 📦 Transfer CA Hub → Amazon CA FBA | 440 | Ship by **Sep 1, 2026** | Checked into FBA by Oct 1 | 🚨 Stockout Nov |
+| 🚨 | 🖨️ Top-up → Amazon CA FBA | 576 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout Oct |
 
 *Starting = stock after all transfers / supplier / print runs arrive. Monthly columns = ending balance after cumulative demand is deducted. **Jan must end ≥ Buffer.***
 
 | Channel | On Hand | Action | Starting | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Buffer | ✓ |
 | :--- | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
 | Amazon US FBA | 794 | +3,514 from US Hub | 4,308 | 4,012 | 3,850 | 3,699 | 3,516 | 3,340 | 3,094 | 2,003 | 797 | **351** | 351 | ✅ |
-| Amazon CA FBA | 0 | +440 from CA Hub; +1,593 top-up | 2,033 | 1,914 | 1,886 | 1,863 | 1,830 | 1,454 | 1,108 | 605 | 264 | **137** | 137 | ✅ |
+| Amazon CA FBA | 0 | +440 from CA Hub; +576 top-up | 1,016 | 957 | 943 | 931 | 915 | 727 | 554 | 302 | 132 | **68** | 68 | ✅ |
 | US Shopify (hubs) | 25,105 | −3,514→US FBA | 21,590 | 21,314 | 21,205 | 20,940 | 20,780 | 18,677 | 16,520 | 14,921 | 12,067 | **11,221** | 582 | ✅ |
 | CA Shopify (CA hub) | 2,474 | −440→CA FBA | 2,033 | 1,914 | 1,886 | 1,863 | 1,830 | 1,454 | 1,108 | 605 | 264 | **137** | 137 | ✅ |
 | UK | 9,234 | −523→EU | 8,710 | 8,593 | 8,464 | 8,422 | 8,408 | 7,739 | 7,176 | 4,830 | 3,036 | **2,594** | 108 | ✅ |
@@ -570,11 +563,11 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 **Full justification:**
 
-- **Why no print run:** 43,091 units available vs 31,344 needed globally = **+11,747 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Nov** at 7,489 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
+- **Why no print run:** 43,091 units available vs 30,327 needed globally = **+12,764 surplus**. The stock exists — we just need to move it to where it sells. Peak demand is **Nov** at 7,489 units globally. Demand model uses the higher of 2024 vs 2025 actuals for every month, so we're planning for the strongest Q4 we've seen — not an average one.
 - **US hub math (HBG/SLI/SAV/KCM):** hold 25,105 units total. US Shopify must keep 10,951 reserved (demand 10,369 + buffer 582). **Surplus above Shopify reserve: 14,154.** Transfer **3,514** → Amazon US FBA. Rationale: hub stock sitting in HBG/SLI doesn't appear on Amazon — it has to be in FBA to be sellable on that channel.
 - **CA hub math:** holds 2,474. CA Shopify must keep 2,033 reserved (demand 1,896 + buffer 137). **Surplus: 441.** Transfer **440** → Amazon CA FBA.
 - **UK → EU transfer:** UK holds 9,234 with only 6,224 needed locally (demand 6,116 + buffer 108) — surplus 3,010 units sitting idle in UK. Transfer **523** to fill EU shortfall. All SKUs can use UK→EU routing. Allow 3–4 weeks for ocean transit + customs clearance.
-- **Why top-up print for Amazon CA FBA (+1,593):** CA hub surplus was only **441** — fully used up transferring to CA FBA. CA FBA still needs 1,593 more units that have no transfer source. Print direct to CA FBA is the only remaining option. After top-up: 2,033 units vs need 2,033. Without it: Stockout Sep.
+- **Why top-up print for Amazon CA FBA (+576):** CA hub surplus was only **441** — fully used up transferring to CA FBA. CA FBA still needs 576 more units that have no transfer source. Print direct to CA FBA is the only remaining option. After top-up: 1,016 units vs need 1,016. Without it: Stockout Oct.
 - **Why September 1 is the transfer deadline:** Amazon FBA inbound processing takes 2–4 weeks after the shipment is received at an Amazon fulfillment center. Our peak month is November. For stock to be **available and sellable on November 1**, it must be **checked into FBA by October 1**. Working backwards: ship from the hub or warehouse by **September 1**. Stock that arrives after mid-October is at serious risk of missing peak entirely — Amazon may not process it before Black Friday.
 
 #### Monthly Demand Forecast
@@ -609,15 +602,15 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 ### Know Me If You Can Cards `EIDJB5002`
 
-**🖨️ Print 6,730 units** — Short **5,805 units** globally — 34,177 available vs 39,982 needed
+**🖨️ Print 5,409 units** — Short **4,484 units** globally — 34,177 available vs 38,661 needed
 
-> ⚠️ **Globally short 5,805 units** (stock: 34,177 · need: 39,982)
+> ⚠️ **Globally short 4,484 units** (stock: 34,177 · need: 38,661)
 
 **What needs to happen — and when:**
 
 | Priority | Action | Units | Order / Ship By | Arrives / Done By | Without This Action |
 | :---: | :--- | ---: | :--- | :--- | :--- |
-| 🚨 | 🖨️ Print → Amazon CA FBA | 2,642 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout Jun |
+| 🚨 | 🖨️ Print → Amazon CA FBA | 1,321 | Order **NOW** (May 2026) | Arrive Jul–Aug · Send to FBA by Sep 1 · Checked in Oct | 🚨 Stockout Jun |
 | 🚨 | 🖨️ Print → CA Shopify | 1,095 | Order **NOW** (May 2026) | At destination warehouse by Aug 2026 | 🚨 Stockout Nov |
 | 🚨 | 🖨️ Print → UK | 607 | Order **NOW** (May 2026) | At destination warehouse by Aug 2026 | 🚨 Stockout Dec |
 | 🚨 | 🖨️ Print → AU | 2,351 | Order **NOW** (May 2026) | At destination warehouse by Aug 2026 | 🚨 Stockout Nov |
@@ -628,7 +621,7 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 | Channel | On Hand | Action | Starting | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec | Jan | Buffer | ✓ |
 | :--- | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
 | Amazon US FBA | 7,426 | +2,077 supplier | 9,503 | 9,503 | 9,503 | 9,503 | 9,503 | 9,455 | 9,281 | 5,687 | 1,089 | **216** | 216 | ✅ |
-| Amazon CA FBA | 0 | +2,642 print | 2,642 | 2,642 | 2,455 | 2,423 | 2,307 | 2,190 | 2,095 | 959 | 212 | **51** | 51 | ✅ |
+| Amazon CA FBA | 0 | +1,321 print | 1,321 | 1,321 | 1,227 | 1,211 | 1,153 | 1,095 | 1,047 | 479 | 106 | **25** | 25 | ✅ |
 | US Shopify (hubs) | 15,083 | — | 15,083 | 15,083 | 13,953 | 13,724 | 13,173 | 12,327 | 11,625 | 6,437 | 1,907 | **1,076** | 149 | ✅ |
 | CA Shopify (CA hub) | 1,547 | +1,095 print | 2,642 | 2,642 | 2,455 | 2,423 | 2,307 | 2,190 | 2,095 | 959 | 212 | **51** | 51 | ✅ |
 | UK | 3,368 | +607 print | 3,975 | 3,975 | 3,796 | 3,796 | 3,787 | 3,785 | 3,714 | 1,275 | 358 | **67** | 67 | ✅ |
@@ -637,18 +630,18 @@ Each SKU section covers: the situation in plain language, the demand forecast, h
 
 **Full justification:**
 
-- **Why we're printing:** All 7 channels combined hold **34,177 units** against a total need of **39,982** (May–Jan demand + 30-day buffer per channel) — a **5,805 unit deficit**. There is no transfer fix: stock is short across channels, so new supply from the printer is the only solution. Peak demand hits **Nov** at 14,995 units globally.
+- **Why we're printing:** All 7 channels combined hold **34,177 units** against a total need of **38,661** (May–Jan demand + 30-day buffer per channel) — a **4,484 unit deficit**. There is no transfer fix: stock is short across channels, so new supply from the printer is the only solution. Peak demand hits **Nov** at 14,995 units globally.
 - **Why print direct to each destination (not through a hub):** Routing through a hub adds 2–4 weeks of handling and delays FBA inbound. New prints are shipped directly from the factory — FBA shipments use Amazon's inbound address, AU/EU prints go straight to those warehouses. This is the fastest path from printer to sellable inventory.
 - **Lead time math:** 4–8 weeks production + 4–6 weeks ocean transit = **8–14 weeks total** from order date to shelf. An order placed **May 2026** arrives **July–August 2026**. For FBA: add 2–4 weeks Amazon inbound processing → stock live in FBA **September–October**, just before November peak. Every week of delay pushes the arrival date further into peak season.
 - **Per-channel gap breakdown (how each destination's print qty was calculated):**
-  - **Amazon CA FBA:** on hand 0 · needs 2,642 (demand 2,591 + 30-day buffer 51) → gap 2,642 → print **2,642** direct
+  - **Amazon CA FBA:** on hand 0 · needs 1,321 (demand 1,295 + 30-day buffer 25) → gap 1,321 → print **1,321** direct
   - **CA Shopify:** on hand 1,547 · needs 2,642 (demand 2,591 + 30-day buffer 51) → gap 1,095 → print **1,095** direct
   - **UK:** on hand 3,368 · needs 3,975 (demand 3,908 + 30-day buffer 67) → gap 607 → print **607** direct
   - **EU:** on hand 681 · needs 716 (demand 672 + 30-day buffer 44) → gap 35 → print **35** direct
   - **AU:** on hand 3,128 · needs 6,345 (demand 6,267 + 30-day buffer 78) → gap 3,217 → print **2,351** direct
 - **Without this print run — what breaks and when:**
-  - **Amazon CA FBA** → 🚨 Stockout Jun — zero inventory, customers see out-of-stock listing
   - **AU** → 🚨 Stockout Nov — zero inventory, customers see out-of-stock listing
+  - **Amazon CA FBA** → 🚨 Stockout Jun — zero inventory, customers see out-of-stock listing
   - **CA Shopify** → 🚨 Stockout Nov — zero inventory, customers see out-of-stock listing
   - **UK** → 🚨 Stockout Dec — zero inventory, customers see out-of-stock listing
   - **EU** → ⚠️ Below buffer Dec — exposed if demand spikes even slightly
@@ -689,31 +682,31 @@ New print runs ship **direct from the printer to the destination warehouse**. Do
 
 Place orders immediately. Standard lead times (4–8 weeks production + 4–6 weeks transit) mean orders placed in May arrive July–August, giving time for FBA inbound processing before peak season.
 
-### 🖨️ Kids Journal — 28,702 Units
+### 🖨️ Kids Journal — 26,134 Units
 
-*Reason: globally short by 13,873 units.*
+*Reason: globally short by 11,304 units.*
 
 | Destination | Units to Print | Current Stock | Total Need | Gap Filled |
 | :--- | ---: | ---: | ---: | :--- |
 | Amazon US FBA | **20,843** | 1,935 | 22,778 | 20,843 of 20,843 deficit |
-| Amazon CA FBA | **4,830** | 0 | 5,137 | 4,830 of 5,137 deficit |
+| Amazon CA FBA | **2,262** | 0 | 2,568 | 2,262 of 2,568 deficit |
 | US Shopify | **3,029** | 22,728 | 25,757 | 3,029 of 3,029 deficit |
 
-**Total: 28,702 units.** Ship all units direct from printer. No intermediate warehousing.
+**Total: 26,134 units.** Ship all units direct from printer. No intermediate warehousing.
 
-### 🖨️ Know Me If You Can Cards — 6,730 Units
+### 🖨️ Know Me If You Can Cards — 5,409 Units
 
-*Reason: globally short by 5,805 units.*
+*Reason: globally short by 4,484 units.*
 
 | Destination | Units to Print | Current Stock | Total Need | Gap Filled |
 | :--- | ---: | ---: | ---: | :--- |
-| Amazon CA FBA | **2,642** | 0 | 2,642 | 2,642 of 2,642 deficit |
+| Amazon CA FBA | **1,321** | 0 | 1,321 | 1,321 of 1,321 deficit |
 | CA Shopify | **1,095** | 1,547 | 2,642 | 1,095 of 1,095 deficit |
 | UK | **607** | 3,368 | 3,975 | 607 of 607 deficit |
 | EU | **35** | 681 | 716 | 35 of 35 deficit |
 | AU | **2,351** | 3,128 | 6,345 | 2,351 of 3,217 deficit (UK→AU blocked) |
 
-**Total: 6,730 units.** Ship all units direct from printer. No intermediate warehousing.
+**Total: 5,409 units.** Ship all units direct from printer. No intermediate warehousing.
 
 ### 🖨️ Top-Up Prints
 
@@ -722,13 +715,12 @@ Top-up prints are small, targeted orders for channels where the transfer route i
 | SKU | Destination | Units | Why Transfer Wasn't Enough |
 | :--- | :--- | ---: | :--- |
 | Teen Journal | Amazon US FBA | **7,032** | US hub surplus only covered 1,038 · FBA still needs 7,032 |
-| Teen Journal | Amazon CA FBA | **2,750** | CA hub surplus exhausted after Shopify reserve · FBA still needs 2,750 |
+| Teen Journal | Amazon CA FBA | **744** | CA hub surplus exhausted after Shopify reserve · FBA still needs 744 |
 | Sharing Joy Conversation Cards | Amazon US FBA | **1,401** | US hub surplus only covered 0 · FBA still needs 1,401 |
-| Sharing Joy Conversation Cards | Amazon CA FBA | **901** | CA hub surplus exhausted after Shopify reserve · FBA still needs 901 |
 | Sharing Joy Conversation Cards | US Shopify | **2,514** | US hubs short on their own Shopify demand · need 2,514 more at hubs |
 | Sharing Joy Conversation Cards | AU | **430** | Cards can't use UK→AU route · no transfer source available |
 | Daily Journal (Teal) | AU | **1,797** | Transfer routes exhausted · 1,797 unit gap remains |
-| Dream Affirmation Cards | Amazon CA FBA | **1,593** | CA hub surplus exhausted after Shopify reserve · FBA still needs 1,593 |
+| Dream Affirmation Cards | Amazon CA FBA | **576** | CA hub surplus exhausted after Shopify reserve · FBA still needs 576 |
 
 ---
 
@@ -742,17 +734,15 @@ Hub→FBA transfers only apply to SKUs **not** getting a print run. For printing
 | :--- | :--- | ---: | ---: | ---: | :--- |
 | Kids Journal | UK → AU | **5,066** | 33,137 | 14,045 | AU needs 14,045 (demand + buffer); AU has 8,979; deficit 5,066; UK surplus 19,679 |
 | Teen Journal | US Hub → Amazon US FBA | **1,038** | 14,693 | 18,354 | US hubs have 14,693; Shopify needs 13,654 (demand + buffer); surplus 1,038; US FBA gap 8,070 |
-| Sharing Joy Conversation Cards | CA Hub → Amazon CA FBA | **1,961** | 4,825 | 2,863 | CA hub has 4,825; CA Shopify needs 2,863 (demand + buffer); surplus 1,961; CA FBA gap 2,863 |
+| Sharing Joy Conversation Cards | CA Hub → Amazon CA FBA | **1,431** | 4,825 | 1,431 | CA hub has 4,825; CA Shopify needs 2,863 (demand + buffer); surplus 1,961; CA FBA gap 1,431 |
 | Daily Journal (Teal) | UK → AU | **1,221** | 12,161 | 9,260 | AU needs 9,260 (demand + buffer); AU has 6,241; deficit 3,019; UK surplus 1,221 |
 | Daily Journal (Teal) | US Hub → Amazon US FBA | **10,185** | 34,801 | 11,235 | US hubs have 34,801; Shopify needs 14,272 (demand + buffer); surplus 20,528; US FBA gap 10,185 |
-| Daily Journal (Teal) | CA Hub → Amazon CA FBA | **1,429** | 4,526 | 2,929 | CA hub has 4,526; CA Shopify needs 2,929 (demand + buffer); surplus 1,596; CA FBA gap 1,429 |
 | Daily Journal (Green) | US Hub → Amazon US FBA | **6,078** | 19,209 | 7,196 | US hubs have 19,209; Shopify needs 5,668 (demand + buffer); surplus 13,540; US FBA gap 6,078 |
-| Daily Journal (Green) | CA Hub → Amazon CA FBA | **954** | 4,274 | 954 | CA hub has 4,274; CA Shopify needs 954 (demand + buffer); surplus 3,320; CA FBA gap 954 |
+| Daily Journal (Green) | CA Hub → Amazon CA FBA | **477** | 4,274 | 477 | CA hub has 4,274; CA Shopify needs 954 (demand + buffer); surplus 3,320; CA FBA gap 477 |
 | Adult Journal | US Hub → Amazon US FBA | **5,302** | 37,634 | 5,717 | US hubs have 37,634; Shopify needs 7,249 (demand + buffer); surplus 30,384; US FBA gap 5,302 |
-| Adult Journal | CA Hub → Amazon CA FBA | **190** | 4,929 | 1,662 | CA hub has 4,929; CA Shopify needs 1,662 (demand + buffer); surplus 3,266; CA FBA gap 190 |
 | Dream Affirmation Cards | UK → EU | **523** | 9,234 | 1,466 | EU needs 1,466; EU has 943; deficit 523; UK surplus 3,009 |
 | Dream Affirmation Cards | US Hub → Amazon US FBA | **3,514** | 25,105 | 4,308 | US hubs have 25,105; Shopify needs 10,951 (demand + buffer); surplus 14,153; US FBA gap 3,514 |
-| Dream Affirmation Cards | CA Hub → Amazon CA FBA | **440** | 2,474 | 2,033 | CA hub has 2,474; CA Shopify needs 2,033 (demand + buffer); surplus 440; CA FBA gap 2,033 |
+| Dream Affirmation Cards | CA Hub → Amazon CA FBA | **440** | 2,474 | 1,016 | CA hub has 2,474; CA Shopify needs 2,033 (demand + buffer); surplus 440; CA FBA gap 1,016 |
 
 ---
 
@@ -760,12 +750,12 @@ Hub→FBA transfers only apply to SKUs **not** getting a print run. For printing
 
 ### 🖨️ Print Orders — Place Now
 
-- [ ] **Kids Journal** — order 28,702 units
+- [ ] **Kids Journal** — order 26,134 units
   - [ ] 20,843 units → Amazon US FBA (direct from printer)
-  - [ ] 4,830 units → Amazon CA FBA (direct from printer)
+  - [ ] 2,262 units → Amazon CA FBA (direct from printer)
   - [ ] 3,029 units → US Shopify (direct from printer)
-- [ ] **Know Me If You Can Cards** — order 6,730 units
-  - [ ] 2,642 units → Amazon CA FBA (direct from printer)
+- [ ] **Know Me If You Can Cards** — order 5,409 units
+  - [ ] 1,321 units → Amazon CA FBA (direct from printer)
   - [ ] 1,095 units → CA Shopify (direct from printer)
   - [ ] 607 units → UK (direct from printer)
   - [ ] 35 units → EU (direct from printer)
@@ -775,16 +765,15 @@ Hub→FBA transfers only apply to SKUs **not** getting a print run. For printing
 
 - [ ] **Teen Journal** top-up prints:
   - [ ] 7,032 units → Amazon US FBA
-  - [ ] 2,750 units → Amazon CA FBA
+  - [ ] 744 units → Amazon CA FBA
 - [ ] **Sharing Joy Conversation Cards** top-up prints:
   - [ ] 1,401 units → Amazon US FBA
-  - [ ] 901 units → Amazon CA FBA
   - [ ] 2,514 units → US Shopify
   - [ ] 430 units → AU
 - [ ] **Daily Journal (Teal)** top-up prints:
   - [ ] 1,797 units → AU
 - [ ] **Dream Affirmation Cards** top-up prints:
-  - [ ] 1,593 units → Amazon CA FBA
+  - [ ] 576 units → Amazon CA FBA
 
 ### 📦 Transfers — Complete by September 1
 
@@ -795,20 +784,18 @@ Hub→FBA transfers only apply to SKUs **not** getting a print run. For printing
 - [ ] US Hub → Amazon US FBA: 1,038 units
 
 **Sharing Joy Conversation Cards:**
-- [ ] CA Hub → Amazon CA FBA: 1,961 units
+- [ ] CA Hub → Amazon CA FBA: 1,431 units
 
 **Daily Journal (Teal):**
 - [ ] UK → AU: 1,221 units
 - [ ] US Hub → Amazon US FBA: 10,185 units
-- [ ] CA Hub → Amazon CA FBA: 1,429 units
 
 **Daily Journal (Green):**
 - [ ] US Hub → Amazon US FBA: 6,078 units
-- [ ] CA Hub → Amazon CA FBA: 954 units
+- [ ] CA Hub → Amazon CA FBA: 477 units
 
 **Adult Journal:**
 - [ ] US Hub → Amazon US FBA: 5,302 units
-- [ ] CA Hub → Amazon CA FBA: 190 units
 
 **Dream Affirmation Cards:**
 - [ ] UK → EU: 523 units

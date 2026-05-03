@@ -755,6 +755,16 @@ def generate_report():
                 'buf_parts': buf_parts,
             }
 
+        # Amazon CA FBA is a new channel with no sales history — sales data has no
+        # 'Amazon_CA_FBA' warehouse code (all CA goes through the CA hub).
+        # Use 50% of CA Shopify demand as the CA FBA forecast to avoid double-counting.
+        ch['Amazon_CA_FBA']['demand']  = ch['CA_Shopify']['demand']  * 0.5
+        ch['Amazon_CA_FBA']['buffer']  = ch['CA_Shopify']['buffer']  * 0.5
+        ch['Amazon_CA_FBA']['monthly'] = {m: v * 0.5 for m, v in ch['CA_Shopify']['monthly'].items()}
+        ch['Amazon_CA_FBA']['deficit'] = max(0.0,
+            ch['Amazon_CA_FBA']['demand'] + ch['Amazon_CA_FBA']['buffer']
+            - ch['Amazon_CA_FBA']['current'])
+
         g_buf_parts = {}
         g_buf_total = 0.0
         for m in buffer_months:
