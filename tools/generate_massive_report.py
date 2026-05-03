@@ -215,61 +215,57 @@ def generate_report():
             else:
                 start_stock[region] = ch[region]['current'] + incoming.get(region, 0)
 
-        # Step 3: Per-channel shortfalls (demand + buffer − start_stock)
-        shortfalls = {
-            r: max(0.0, ch[r]['demand'] + ch[r]['buffer'] - start_stock[r])
-            for r in all_channels
-        }
-
-        # Gate on GLOBAL shortage — not per-channel shortage.
-        # If globally sufficient, we reposition existing stock (hub→FBA transfers).
-        # Only print new units when global supply is actually insufficient.
+        # Gate on GLOBAL shortage — only print genuinely new units when total supply
+        # across all warehouses is insufficient to cover demand + buffer.
         global_gap_check = max(0.0, g_demand + g_buf_total - g_stock)
         is_globally_short = global_gap_check > 0
 
-        # Step 4a: Print mode — only when globally short.
-        # Rule: if printing, fill ALL channel shortfalls from print; no hub→FBA transfers.
+        # Step 4: Hub→FBA repositioning — always runs regardless of print mode.
+        # Using stock that already exists in hubs is always better than printing fresh units.
+        # Print (Step 5) only covers what repositioning can't fill.
+        for region, src_list in [
+            ('Amazon_US_FBA', [('HBG', 'HBG'), ('SLI', 'SLI'), ('SAV', 'SAV')]),
+            ('Amazon_CA_FBA', [('CA',  'CA Hub')]),
+        ]:
+            gap = max(0.0, ch[region]['demand'] + ch[region]['buffer']
+                      - start_stock[region])
+            for src_key, src_label in src_list:
+                if gap <= 0:
+                    break
+                src_stock = stock_idx.get(sid, {}).get(src_key, 0)
+                if src_stock > 0:
+                    pull = min(gap, src_stock)
+                    transfers.append({
+                        'source': src_label, 'dest': region, 'qty': pull,
+                        'reason': (
+                            f"{region.replace('_',' ')} needs "
+                            f"{int(ch[region]['demand'] + ch[region]['buffer']):,}; "
+                            f"has {int(ch[region]['current']):,}; "
+                            f"{src_label} has {int(src_stock):,}")
+                    })
+                    incoming[region]    += pull
+                    start_stock[region] += pull
+                    gap -= pull
+
+        # Step 5: Print — only when globally short, only for residual gaps that
+        # repositioning couldn't fill. Print ships direct to the channel (no hub routing).
         print_alloc = {}
         if is_globally_short:
-            for region, shortfall in shortfalls.items():
-                if shortfall > 0:
-                    print_alloc[region] = int(shortfall)
-                    incoming[region]    += shortfall
-                    start_stock[region] += shortfall
+            for region in all_channels:
+                residual = max(0.0,
+                               ch[region]['demand'] + ch[region]['buffer']
+                               - start_stock[region])
+                if residual > 0:
+                    print_alloc[region] = int(residual)
+                    incoming[region]    += residual
+                    start_stock[region] += residual
 
         total_print = sum(print_alloc.values())
-        is_printing = total_print > 0
+        is_printing  = total_print > 0
 
-        # Step 4b: Reposition mode — globally sufficient, move stock into FBA via hub transfers.
-        if not is_printing:
-            for region, src_list in [
-                ('Amazon_US_FBA', [('HBG', 'HBG'), ('SLI', 'SLI'), ('SAV', 'SAV')]),
-                ('Amazon_CA_FBA', [('CA',  'CA Hub')]),
-            ]:
-                gap = max(0.0, ch[region]['demand'] + ch[region]['buffer']
-                          - start_stock[region])
-                for src_key, src_label in src_list:
-                    if gap <= 0:
-                        break
-                    src_stock = stock_idx.get(sid, {}).get(src_key, 0)
-                    if src_stock > 0:
-                        pull = min(gap, src_stock)
-                        transfers.append({
-                            'source': src_label, 'dest': region, 'qty': pull,
-                            'reason': (
-                                f"{region.replace('_',' ')} needs "
-                                f"{int(ch[region]['demand'] + ch[region]['buffer']):,}; "
-                                f"has {int(ch[region]['current']):,}; "
-                                f"{src_label} has {int(src_stock):,}")
-                        })
-                        incoming[region]    += pull
-                        start_stock[region] += pull
-                        gap -= pull
-
-        # Step 5: Top-up prints — when in reposition mode, some channels may still have
-        # gaps because transfer sources are exhausted (CA Hub depleted) or routes are
-        # blocked (cards can't go UK→AU). Fill these with small targeted prints direct
-        # to the specific channel. Hub→FBA transfers for other channels still proceed.
+        # Step 6: Top-up prints — when globally sufficient, some channels may still have
+        # gaps because transfer routes are blocked (cards can't go UK→AU) or source
+        # stock is exhausted. Fill these with small targeted prints.
         top_up_print = {}
         if not is_globally_short:
             for region in all_channels:

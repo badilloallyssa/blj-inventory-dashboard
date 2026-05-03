@@ -12,8 +12,8 @@ This plan covers every SKU from **May 2026 through January 2027** and ensures ea
 
 **🖨️ New Print Orders:**
 
-- **Kids Journal**: print **25,980 units** (20,843 → Amazon US FBA, 5,137 → Amazon CA FBA) — ship direct from printer, do not route through hubs
-- **Know Me If You Can Cards**: print **8,578 units** (2,077 → Amazon US FBA, 2,642 → Amazon CA FBA, 607 → UK, 35 → EU, 3,217 → AU) — ship direct from printer, do not route through hubs
+- **Kids Journal**: print **5,787 units** (3,834 → Amazon US FBA, 1,953 → Amazon CA FBA) — ship direct from printer, do not route through hubs
+- **Know Me If You Can Cards**: print **4,954 units** (1,095 → Amazon CA FBA, 607 → UK, 35 → EU, 3,217 → AU) — ship direct from printer, do not route through hubs
 
 **📦 Hub→FBA Transfers** *(no print run needed — reposition existing stock)*:
 
@@ -42,9 +42,9 @@ This plan covers every SKU from **May 2026 through January 2027** and ensures ea
 | :--- | :--- |
 | Selling period | May 2026 – Jan 2027 (9 months) |
 | Buffer carry-over | Feb 2027 (30 days) |
-| Full print runs | 2 SKUs · 34,558 units total |
+| Full print runs | 2 SKUs · 10,741 units total |
 | Top-up prints | 3 SKUs · 4,516 units (channel gaps where transfers fall short) |
-| Transfer moves | 19 |
+| Transfer moves | 25 |
 | Print → FBA rule | If printing: ship direct to FBA from printer · No hub→FBA transfers |
 | Transfer → FBA rule | If NOT printing: reposition hub stock into FBA · No new print |
 | Top-up rule | Small targeted prints when transfer route is blocked or source exhausted — does NOT cancel hub transfers |
@@ -137,15 +137,15 @@ For every SKU: month-by-month global demand (2024 vs 2025, max chosen), buffer c
 
 | Channel | 9-Mo Demand | Current Stock | Deficit | How It's Filled |
 | :--- | ---: | ---: | ---: | :--- |
-| Amazon US FBA | 20,844 | 1,935 | 20,843 | 🖨️ Print 20,843 direct to Amazon US FBA |
-| Amazon CA FBA | 4,867 | 0 | 5,137 | 🖨️ Print 5,137 direct to Amazon CA FBA |
+| Amazon US FBA | 20,844 | 1,935 | 20,843 | 🖨️ Print 3,834 direct to Amazon US FBA |
+| Amazon CA FBA | 4,867 | 0 | 5,137 | 🖨️ Print 1,953 direct to Amazon CA FBA |
 | UK | 12,661 | 33,137 | 0 | ✅ Sufficient stock |
 | EU | 3,246 | 3,590 | 0 | ✅ Sufficient stock |
 | AU | 13,282 | 8,979 | 5,066 | ✈️ Transfer: UK 5,066 |
 
 > **UK stock:** 33,137 current − 5,066 transferred out = **28,071 remaining** vs UK demand 12,661 → ✅ covered
 
-**→ PRINT ORDER: 25,980 units** (20,843 to Amazon US FBA + 5,137 to Amazon CA FBA)
+**→ PRINT ORDER: 5,787 units** (3,834 to Amazon US FBA + 1,953 to Amazon CA FBA)
 
 ---
 
@@ -423,13 +423,13 @@ For every SKU: month-by-month global demand (2024 vs 2025, max chosen), buffer c
 
 | Channel | 9-Mo Demand | Current Stock | Deficit | How It's Filled |
 | :--- | ---: | ---: | ---: | :--- |
-| Amazon US FBA | 9,287 | 7,426 | 2,077 | 🖨️ Print 2,077 direct to Amazon US FBA |
-| Amazon CA FBA | 2,591 | 0 | 2,642 | 🖨️ Print 2,642 direct to Amazon CA FBA |
+| Amazon US FBA | 9,287 | 7,426 | 2,077 | 📦 Transfer: HBG 2,077 |
+| Amazon CA FBA | 2,591 | 0 | 2,642 | 🖨️ Print 1,095 direct to Amazon CA FBA |
 | UK | 3,908 | 3,368 | 607 | 🖨️ Print 607 direct to UK |
 | EU | 672 | 681 | 35 | 🖨️ Print 35 direct to EU |
 | AU | 6,267 | 3,128 | 3,217 | 🖨️ Print 3,217 direct to AU (UK→AU blocked for cards) |
 
-**→ PRINT ORDER: 8,578 units** (2,077 to Amazon US FBA + 2,642 to Amazon CA FBA + 607 to UK + 35 to EU + 3,217 to AU)
+**→ PRINT ORDER: 4,954 units** (1,095 to Amazon CA FBA + 607 to UK + 35 to EU + 3,217 to AU)
 
 ---
 
@@ -437,26 +437,25 @@ For every SKU: month-by-month global demand (2024 vs 2025, max chosen), buffer c
 
 The following SKUs need new units printed and shipped **direct from the printer to the destination** — do not route through hubs.
 
-### 🖨️ Kids Journal — Print 25,980 Units
+### 🖨️ Kids Journal — Print 5,787 Units
 
 | Destination | Units | Current Stock | 9-Mo Demand | Deficit | Math |
 | :--- | ---: | ---: | ---: | ---: | :--- |
-| Amazon US FBA | **20,843** | 1,935 | 20,844 | 20,843 | 20,844 demand − 1,935 stock = 20,843 needed |
-| Amazon CA FBA | **5,137** | 0 | 4,867 | 5,137 | 4,867 demand − 0 stock = 5,137 needed |
+| Amazon US FBA | **3,834** | 1,935 | 20,844 | 20,843 | 20,844 demand − 1,935 stock = 20,843 needed |
+| Amazon CA FBA | **1,953** | 0 | 4,867 | 5,137 | 4,867 demand − 0 stock = 5,137 needed |
 
-*Total print run: **25,980 units** · ship direct from printer*
+*Total print run: **5,787 units** · ship direct from printer*
 
-### 🖨️ Know Me If You Can Cards — Print 8,578 Units
+### 🖨️ Know Me If You Can Cards — Print 4,954 Units
 
 | Destination | Units | Current Stock | 9-Mo Demand | Deficit | Math |
 | :--- | ---: | ---: | ---: | ---: | :--- |
-| Amazon US FBA | **2,077** | 7,426 | 9,287 | 2,077 | 9,287 demand − 7,426 stock = 2,077 needed |
-| Amazon CA FBA | **2,642** | 0 | 2,591 | 2,642 | 2,591 demand − 0 stock = 2,642 needed |
+| Amazon CA FBA | **1,095** | 0 | 2,591 | 2,642 | 2,591 demand − 0 stock = 2,642 needed |
 | UK | **607** | 3,368 | 3,908 | 607 | 3,908 demand − 3,368 stock = 607 needed |
 | EU | **35** | 681 | 672 | 35 | 672 demand − 681 stock = 35 needed |
 | AU | **3,217** | 3,128 | 6,267 | 3,217 | 6,267 demand − 3,128 stock = 3,217 needed (UK→AU blocked for cards) |
 
-*Total print run: **8,578 units** · ship direct from printer*
+*Total print run: **4,954 units** · ship direct from printer*
 
 ### 🖨️ Top-Up Prints (Targeted Channel Fills)
 
@@ -479,6 +478,10 @@ All transfers should be executed by **September 1, 2026**. FBA inbound processin
 | SKU | From → To | Units | Source Stock | Dest Demand | Justification |
 | :--- | :--- | ---: | ---: | ---: | :--- |
 | Kids Journal | UK → AU | **5,066** | 33,137 | 13,282 | AU needs 14,045 (demand + buffer); AU has 8,979; deficit 5,066; UK can spare 19,679 above its own needs |
+| Kids Journal | HBG → Amazon US FBA | **6,607** | 6,607 | 20,844 | Amazon US FBA needs 22,778; has 1,935; HBG has 6,607 |
+| Kids Journal | SLI → Amazon US FBA | **4,544** | 4,544 | 20,844 | Amazon US FBA needs 22,778; has 1,935; SLI has 4,544 |
+| Kids Journal | SAV → Amazon US FBA | **5,858** | 5,858 | 20,844 | Amazon US FBA needs 22,778; has 1,935; SAV has 5,858 |
+| Kids Journal | CA Hub → Amazon CA FBA | **3,184** | 3,184 | 4,867 | Amazon CA FBA needs 5,137; has 0; CA Hub has 3,184 |
 | Teen Journal | HBG → Amazon US FBA | **3,537** | 3,537 | 17,044 | Amazon US FBA needs 18,354; has 10,284; HBG has 3,537 |
 | Teen Journal | SLI → Amazon US FBA | **2,251** | 2,251 | 17,044 | Amazon US FBA needs 18,354; has 10,284; SLI has 2,251 |
 | Teen Journal | SAV → Amazon US FBA | **2,282** | 3,369 | 17,044 | Amazon US FBA needs 18,354; has 10,284; SAV has 3,369 |
@@ -497,6 +500,8 @@ All transfers should be executed by **September 1, 2026**. FBA inbound processin
 | Dream Affirmation Cards | UK → EU | **523** | 9,234 | 1,408 | EU needs 1,466; EU has 943; deficit 523; UK surplus 3,009 |
 | Dream Affirmation Cards | HBG → Amazon US FBA | **3,514** | 13,138 | 3,957 | Amazon US FBA needs 4,308; has 794; HBG has 13,138 |
 | Dream Affirmation Cards | CA Hub → Amazon CA FBA | **2,033** | 2,474 | 1,896 | Amazon CA FBA needs 2,033; has 0; CA Hub has 2,474 |
+| Know Me If You Can Cards | HBG → Amazon US FBA | **2,077** | 2,603 | 9,287 | Amazon US FBA needs 9,503; has 7,426; HBG has 2,603 |
+| Know Me If You Can Cards | CA Hub → Amazon CA FBA | **1,547** | 1,547 | 2,591 | Amazon CA FBA needs 2,642; has 0; CA Hub has 1,547 |
 
 ---
 
@@ -1084,7 +1089,7 @@ Starting stock = current inventory **after** all transfers land and print runs a
 
 #### Amazon US FBA
 
-*Starting stock: **9,503** (7,426 current + 2,077 print run)*
+*Starting stock: **9,503** (7,426 current + 2,077 transfer in)*
 
 *30-day buffer target: **216 units** (Feb avg 333 + Mar avg 317 = 216)*
 
@@ -1168,12 +1173,11 @@ Starting stock = current inventory **after** all transfers land and print runs a
 
 ### 🖨️ Print Orders (Place Immediately)
 
-- [ ] **Kids Journal** — order **25,980 units** from supplier
-  - Ship **20,843 units** direct to **Amazon US FBA**
-  - Ship **5,137 units** direct to **Amazon CA FBA**
-- [ ] **Know Me If You Can Cards** — order **8,578 units** from supplier
-  - Ship **2,077 units** direct to **Amazon US FBA**
-  - Ship **2,642 units** direct to **Amazon CA FBA**
+- [ ] **Kids Journal** — order **5,787 units** from supplier
+  - Ship **3,834 units** direct to **Amazon US FBA**
+  - Ship **1,953 units** direct to **Amazon CA FBA**
+- [ ] **Know Me If You Can Cards** — order **4,954 units** from supplier
+  - Ship **1,095 units** direct to **Amazon CA FBA**
   - Ship **607 units** direct to **UK**
   - Ship **35 units** direct to **EU**
   - Ship **3,217 units** direct to **AU**
@@ -1191,6 +1195,10 @@ Starting stock = current inventory **after** all transfers land and print runs a
 
 **Kids Journal:**
 - [ ] UK → AU: **5,066 units**
+- [ ] HBG → Amazon US FBA: **6,607 units**
+- [ ] SLI → Amazon US FBA: **4,544 units**
+- [ ] SAV → Amazon US FBA: **5,858 units**
+- [ ] CA Hub → Amazon CA FBA: **3,184 units**
 
 **Teen Journal:**
 - [ ] HBG → Amazon US FBA: **3,537 units**
@@ -1221,6 +1229,10 @@ Starting stock = current inventory **after** all transfers land and print runs a
 - [ ] UK → EU: **523 units**
 - [ ] HBG → Amazon US FBA: **3,514 units**
 - [ ] CA Hub → Amazon CA FBA: **2,033 units**
+
+**Know Me If You Can Cards:**
+- [ ] HBG → Amazon US FBA: **2,077 units**
+- [ ] CA Hub → Amazon CA FBA: **1,547 units**
 
 ### 📋 Verification Checkpoints
 
